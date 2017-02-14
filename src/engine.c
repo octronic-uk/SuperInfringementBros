@@ -5,20 +5,19 @@ engine_t* engineAllocate() {
     engine->window = NULL;
     engine->renderer = NULL;
     engine->inputFunction = NULL;
-    engine->logicFunction = NULL;
     engine->updateFunction = NULL;
+    engine->renderFunction = NULL;
     return engine;
 }
 
-
-int engineInitVideo(engine_t* self, int width, int height, char* title) {
+int engineInit(engine_t* self, int width, int height, char* title) {
 
     if (self == NULL) {
         printf("Engine: Error, engine_t must be allocated before initialisation.\n");
         return 1;
     }
 
-    if (SDL_Init(SDL_INIT_VIDEO) != 0){
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
         printf("Engine: SDL_Init Error = %s\n" , SDL_GetError());
         return 1;
     }
@@ -58,26 +57,33 @@ void engineDestroy(engine_t* self) {
 }
 
 void engineLoop(engine_t* self) {
-    char done = 0;
+    char  done        = 0;
+    float currentTime = 0.0f;
+    float lastTime    = 0.0f;
+    float deltaTime   = 0.0f;;
+
     do {
+        currentTime = SDL_GetTicks();
+        deltaTime = currentTime - lastTime;
 
         if (self->inputFunction != NULL) {
-            self->inputFunction();
+            self->inputFunction(deltaTime);
         } else {
-            done = 1;
-        }
-
-        if (self->logicFunction != NULL) {
-            self->logicFunction();
-        } else { 
             done = 1;
         }
 
         if (self->updateFunction != NULL) {
-            self->updateFunction();
+            self->updateFunction(deltaTime);
         } else {
             done = 1;
         }
 
+        if (self->renderFunction != NULL) {
+            self->renderFunction(deltaTime);
+        } else { 
+            done = 1;
+        }
+
+        lastTime = currentTime;
     } while (done == 0);
 }
