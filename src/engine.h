@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "background.h"
+#include "player.h"
 
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
@@ -15,9 +16,8 @@ struct engine {
     // SDL Objects
     SDL_Window   *window;
     SDL_Renderer *renderer;
-    SDL_Surface  *surface;
     SDL_Event    *event;
-    background_t *backgrounds;
+    background_t **backgrounds;
     // Timing
     float currentTime;
     float lastTime;
@@ -26,6 +26,15 @@ struct engine {
     int (*inputFunction )(engine_t*);
     int (*renderFunction)(engine_t*);
     int (*updateFunction)(engine_t*);
+    // Engine things
+    player_t *player;
+    // Input
+    char upPressed;
+    char downPressed;
+    char leftPressed;
+    char rightPressed;
+    char aBtnPressed;
+    char bBtnPressed;
 };
 
 engine_t* engineAllocate();

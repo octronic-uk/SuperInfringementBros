@@ -23,8 +23,14 @@ add_executable(
 
 target_link_libraries(
     ${BIN_NAME}
+    -lpng
     ${SDL2_LIBRARIES}
     ${SDL2_IMAGE_LIBRARY}
 )
 
-
+# Copy Resources
+add_custom_command(
+    TARGET ${BIN_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/res
+)

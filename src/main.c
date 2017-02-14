@@ -2,30 +2,11 @@
 #include <SDL2/SDL.h>
 #include "engine.h"
  
-int setup() {
-    return ENGINE_OK;
-}
-
-int render(engine_t* engine) {
-
-}
-
-int update(engine_t* engine) {
-
-}
-
-int input(engine_t* engine) {
-    SDL_PollEvent(engine->event);
-    if (engine->event->type == SDL_QUIT) {
-        return ENGINE_QUIT;
-    } else if (engine->event->type == SDL_KEYDOWN) {
-        // KeyDown
-    } else if (engine->event->type == SDL_KEYUP) {
-        // KeyUp
-    } else if (engine->event->type == SDL_MOUSEBUTTONDOWN) {
-        // MouseButtonDown
-    } else if (engine->event->type == SDL_MOUSEBUTTONUP) {
-        // MouseButtonUp
+int setup(engine_t* engine) {
+    background_t *bg = backgroundAllocate("res/bg1.png",engine->renderer);
+    if (bg!=NULL) {
+        bg->velocity.x = -1;
+        engine->backgrounds[0] = bg;
     }
     return ENGINE_OK;
 }
@@ -34,15 +15,21 @@ int main(int argc, char** argv) {
     int retval = 0;
     // Init & Setup
     engine_t *engine = engineAllocate();
-    engineInit(engine,800,600,"SuperInfringementBros!");
-    if (setup() != ENGINE_OK) {
+    int initResult = engineInit(engine,800,600,"SuperInfringementBros!");
+
+    if (initResult != 0) {
+        printf("Engine init failed\n");
+        return ENGINE_ERROR;
+    }
+
+    if (setup(engine) != ENGINE_OK) {
         printf("Error during setup\n");
         return ENGINE_ERROR;
     }
     // Set engine methods
-    engine->inputFunction  = &input;
-    engine->updateFunction = &update;
-    engine->renderFunction = &render;
+    engine->inputFunction  = &engineDefaultInputHandler;
+    engine->updateFunction = &engineDefaultUpdateHandler;
+    engine->renderFunction = &engineDefaultRenderHandler;
     // Run
     retval = engineLoop(engine);
     // Cleanup

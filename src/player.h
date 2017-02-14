@@ -10,6 +10,7 @@ typedef struct {
 } player_t;
 
 player_t* playerAllocate();
+void playerDestroy(player_t*);
 
 #endif // PLAYER_H
 

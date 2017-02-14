@@ -1,7 +1,10 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "sprite.h"
 
+
 sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, int animFrames, const SDL_PixelFormat* screenFormat) {
+    printf("Allocating new sprite_t\n");
     // Object
     sprite_t *s = (sprite_t*)malloc(sizeof(sprite_t));
     // Image Surface
@@ -23,6 +26,7 @@ sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, i
 }
 
 void spriteDestroy(sprite_t *self) {
+    printf("Destroying sprite_t\n");
     if (self != NULL) {
         // Source Texture
         if (self->surface != NULL) {

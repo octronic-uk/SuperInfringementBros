@@ -5,12 +5,13 @@
 #include <SDL2/SDL_image.h>
 
 typedef struct {
-    SDL_Surface *surface;
-    vector2i_t vel;
-    vector2i_t pos;
+    SDL_Texture *texture;
+    vector2i_t   velocity;
+    vector2i_t   position;
+    vector2i_t   dimensions;
 } background_t;
 
-background_t* backgroundAllocate(char* path, const SDL_PixelFormat*);
+background_t* backgroundAllocate(char* path, SDL_Renderer*);
 void backgroundDestroy(background_t*);
 
 #endif // BACKGROUND_H
