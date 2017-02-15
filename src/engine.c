@@ -5,11 +5,17 @@ engine_t* engineAllocate() {
     printf("Allocating new engine_t\n");
     engine_t* engine    = (engine_t*)malloc(sizeof(engine_t));
     engine->event       = (SDL_Event*)malloc(sizeof(SDL_Event));
-    engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*MAX_BACKGROUNDS);
 
+    engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*MAX_BACKGROUNDS);
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
         engine->backgrounds[bgIndex] = NULL; 
     }
+
+    engine->projectiles = (projectile_t**)malloc(sizeof(projectile_t)*MAX_PROJECTILES);
+    for (int pIndex = 0; pIndex < MAX_PROJECTILES; pIndex++) {
+        engine->projectiles[pIndex] = NULL; 
+    }
+
 
     engine->currentTime = 0.0f;
     engine->lastTime    = 0.0f;
@@ -68,7 +74,12 @@ int engineInit(engine_t* self, int width, int height, char* title) {
         SDL_Quit();
         return 1;
     }
-   
+ 
+    if (_setupResources(self) != ENGINE_OK) {
+        printf("Error during resource setup\n");
+        return ENGINE_ERROR;
+    }
+  
     return 0;
 }
 
@@ -148,6 +159,26 @@ int engineDefaultInputHandler(engine_t* self) {
         return ENGINE_QUIT;
     } else if (self->event->type == SDL_KEYDOWN) {
         switch (self->event->key.keysym.sym) {
+            case SDLK_d:
+                if (self->debug) {
+                    printf("Debug Disabled\n");
+                    self->debug = 0;
+                } else {
+                    printf("Debug Enabled\n");
+                    self->debug = 1;
+                }
+                break;
+            case SDLK_a:
+                for (int projIndex = 0; projIndex < MAX_BACKGROUNDS; projIndex++) {
+                    if (self->projectiles[projIndex] == NULL) {
+                        projectile_t *fireball = projectileAllocate(fireballSprite);
+                        fireball->velocity.x = self->player->velocity.x + 0.1f;
+                        fireball->velocity.y = self->player->velocity.y + 0.0f;
+                        self->projectiles[projIndex] = fireball;
+                        break;
+                    }
+                }
+                break;
             case SDLK_UP:
                 self->upPressed = 1;
                 break;
@@ -182,6 +213,9 @@ int engineDefaultInputHandler(engine_t* self) {
 }
 
 int engineDefaultUpdateHandler(engine_t* self) { 
+    if (self->debug) 
+        printf("DeltaTime: %.2fms\n",self->deltaTime);
+
     // Scroll Backgrounds
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
 
@@ -192,8 +226,8 @@ int engineDefaultUpdateHandler(engine_t* self) {
         } 
 
         if (nextBg->scroll == 1) {
-            nextBg->position.x += nextBg->velocity.x;
-            nextBg->position.y += nextBg->velocity.y;
+            nextBg->position.x += nextBg->velocity.x*self->deltaTime;
+            nextBg->position.y += nextBg->velocity.y*self->deltaTime;
         }
 
         if (nextBg->repeatScroll == 1) {
@@ -266,7 +300,78 @@ int engineDefaultRenderHandler(engine_t* self) {
     playerDest.x = self->player->position.x;
     playerDest.y = self->player->position.y;
     SDL_RenderCopy(self->renderer,self->player->sprite->texture,NULL,&playerDest);
+    // Render Projectiles
+    for (int projIndex=0; projIndex < MAX_PROJECTILES; projIndex++) {
+        projectile_t *nextProj = self->projectiles[projIndex];
+        if (nextProj == NULL) {
+            continue;
+        } 
+        SDL_Rect dest;
+        dest.w = nextProj->sprite->dimensions.x;
+        dest.h = nextProj->sprite->dimensions.y;
+        dest.x = nextProj->position.x;
+        dest.y = nextProj->position.y;
+        SDL_RenderCopy(self->renderer, nextProj->sprite->texture, NULL, &dest);
+    }
     // Present
     SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
 }  
+
+
+int _setupResources(engine_t* engine) {
+    // Setup Player
+    playerSprite = spriteAllocate("res/tiny_ship.png",engine->renderer);
+    engine->player = playerAllocate(playerSprite);
+    engine->player->velocity.x = 0.5f;
+    engine->player->velocity.y = 0.5f;
+    engine->player->position.x = 20;
+    engine->player->position.y = engine->screenHeight/2-playerSprite->dimensions.y/2;
+    // Setup Backgrounds
+    background_t *bg = backgroundAllocate("res/sky.png",engine->renderer);
+    if (bg!=NULL) {
+        bg->scroll = 0;
+        bg->repeatScroll = 0;
+        engine->backgrounds[0] = bg;
+    }
+    bg = backgroundAllocate("res/clouds.png",engine->renderer);
+    if (bg!=NULL) {
+        bg->scroll = 1;
+        bg->repeatScroll = 1;
+        bg->velocity.x = -0.1f;
+        engine->backgrounds[1] = bg;
+    }
+    bg = backgroundAllocate("res/clouds_2.png",engine->renderer);
+    if (bg!=NULL) {
+        bg->scroll = 1;
+        bg->repeatScroll = 1;
+        bg->velocity.x = -0.2f;
+        engine->backgrounds[2] = bg;
+    }
+    bg = backgroundAllocate("res/ground.png",engine->renderer);
+    if (bg!=NULL) {
+        bg->scroll = 1;
+        bg->repeatScroll = 1;
+        bg->velocity.x = -0.4f;
+        engine->backgrounds[3] = bg;
+    }
+    // Projectile
+    fireballSprite = spriteAllocateSpriteSheet("res/fireball.png",64,64,4,engine->renderer);
+    // Animation Frames
+    // 0 
+    fireballSprite->frameOrder[0].x = 0;
+    fireballSprite->frameOrder[0].y = 0;
+    // 1
+    fireballSprite->frameOrder[0].x = 1;
+    fireballSprite->frameOrder[0].y = 0;
+    // 2
+    fireballSprite->frameOrder[0].x = 2;
+    fireballSprite->frameOrder[0].y = 0;
+    // 3
+    fireballSprite->frameOrder[0].x = 3;
+    fireballSprite->frameOrder[0].y = 0;
+
+    return ENGINE_OK;
+}
+
+

@@ -6,7 +6,7 @@
 
 typedef struct {
     SDL_Texture *texture;
-    vector2i_t   velocity;
+    vector2f_t   velocity;
     vector2i_t   position;
     vector2i_t   dimensions;
     char scroll;

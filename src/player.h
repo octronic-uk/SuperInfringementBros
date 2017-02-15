@@ -6,7 +6,7 @@
 
 typedef struct {
     vector2i_t position;
-    vector2i_t velocity;
+    vector2f_t velocity;
     int score;
     int health;
     sprite_t* sprite;

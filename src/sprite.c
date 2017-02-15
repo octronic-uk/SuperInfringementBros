@@ -3,7 +3,7 @@
 #include "sprite.h"
 
 sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
-    printf("Allocating new sprite_t\n");
+    printf("Allocating new sprite_t from %s\n",path);
     // Object
     sprite_t *s = (sprite_t*)malloc(sizeof(sprite_t));
     // Image Surface
@@ -26,6 +26,7 @@ sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, i
     // Tile Dimensions
     s->tileDimensions.x = tileWidth;
     s->tileDimensions.y = tileHeight;
+    s->currentFrame = 0;
     // Frames
     if (animFrames > 0) {
         s->numFrames = animFrames;
@@ -35,6 +36,13 @@ sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, i
         s->frameOrder = NULL; 
     }
     return s;
+}
+
+void spriteAdvanceFrame(sprite_t* self) {
+    self->currentFrame++;
+    if (self->currentFrame > self->numFrames) {
+        self->currentFrame = 0;
+    }
 }
 
 void spriteDestroy(sprite_t *self) {
@@ -55,4 +63,13 @@ void spriteDestroy(sprite_t *self) {
         free (self);
         self = NULL;
     }
+}
+
+SDL_Rect spriteGetCurrentFrameRect(sprite_t* self) {
+    SDL_Rect frameRect;
+    frameRect.w = self->tileDimensions.x;
+    frameRect.h = self->tileDimensions.y;
+    frameRect.x = self->frameOrder[self->currentFrame].x*self->tileDimensions.x;
+    frameRect.y = self->frameOrder[self->currentFrame].y*self->tileDimensions.y;
+    return frameRect;
 }

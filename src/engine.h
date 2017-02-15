@@ -4,15 +4,22 @@
 #include <SDL2/SDL.h>
 #include "background.h"
 #include "player.h"
+#include "projectile.h"
 
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
 #define ENGINE_QUIT   1
+
 #define MAX_BACKGROUNDS 5 
+#define MAX_PROJECTILES 100
+
+sprite_t* fireballSprite;
+sprite_t* playerSprite;
 
 typedef struct engine engine_t;
 
 struct engine {
+    char debug;
     int screenWidth;
     int screenHeight;
     // SDL Objects
@@ -30,6 +37,7 @@ struct engine {
     int (*updateFunction)(engine_t*);
     // Engine things
     player_t *player;
+    projectile_t **projectiles;
     // Input
     char upPressed;
     char downPressed;
@@ -40,13 +48,12 @@ struct engine {
 };
 
 engine_t* engineAllocate();
-int       engineInit(engine_t* self, int width, int height, char* title);
-void      engineDestroy(engine_t* self);
-int       engineLoop(engine_t* self);
-
-// Default engine methods
-int engineDefaultInputHandler(engine_t*);
-int engineDefaultUpdateHandler(engine_t*);
-int engineDefaultRenderHandler(engine_t*);
+int  engineInit(engine_t* self, int width, int height, char* title);
+void engineDestroy(engine_t* self);
+int  engineLoop(engine_t* self);
+int  engineDefaultInputHandler(engine_t* self);
+int  engineDefaultUpdateHandler(engine_t* self);
+int  engineDefaultRenderHandler(engine_t* self);
+int  _setupResources(engine_t* self);
 
 #endif // ENGINE_H
