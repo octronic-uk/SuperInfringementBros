@@ -5,7 +5,6 @@ engine_t* engineAllocate() {
     printf("Allocating new engine_t\n");
     engine_t* engine    = (engine_t*)malloc(sizeof(engine_t));
     engine->event       = (SDL_Event*)malloc(sizeof(SDL_Event));
-    engine->player      = playerAllocate(); 
     engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*MAX_BACKGROUNDS);
 
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
@@ -35,6 +34,10 @@ engine_t* engineAllocate() {
 }
 
 int engineInit(engine_t* self, int width, int height, char* title) {
+
+    self->screenWidth = width;
+    self->screenHeight = height;
+
     if (self == NULL) {
         printf("Engine: Error, engine_t must be allocated before initialisation.\n");
         return 1;
@@ -149,13 +152,13 @@ int engineDefaultInputHandler(engine_t* self) {
                 self->upPressed = 1;
                 break;
             case SDLK_DOWN:
-                self->upPressed = 1;
+                self->downPressed = 1;
                 break;
             case SDLK_LEFT:
-                self->upPressed = 1;
+                self->leftPressed = 1;
                 break;
             case SDLK_RIGHT:
-                self->upPressed = 1;
+                self->rightPressed = 1;
                 break;
         }
     } else if (self->event->type == SDL_KEYUP) {
@@ -165,13 +168,13 @@ int engineDefaultInputHandler(engine_t* self) {
                 self->upPressed = 0;
                 break;
             case SDLK_DOWN:
-                self->upPressed = 0;
+                self->downPressed = 0;
                 break;
             case SDLK_LEFT:
-                self->upPressed = 0;
+                self->leftPressed = 0;
                 break;
             case SDLK_RIGHT:
-                self->upPressed = 0;
+                self->rightPressed = 0;
                 break;
         }
     } 
@@ -179,6 +182,7 @@ int engineDefaultInputHandler(engine_t* self) {
 }
 
 int engineDefaultUpdateHandler(engine_t* self) { 
+    // Scroll Backgrounds
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
 
         background_t *nextBg = self->backgrounds[bgIndex];
@@ -187,24 +191,62 @@ int engineDefaultUpdateHandler(engine_t* self) {
             continue;
         } 
 
-        nextBg->position.x += nextBg->velocity.x;
-        nextBg->position.y += nextBg->velocity.y;
-
-        if (nextBg->position.x < -(nextBg->dimensions.x/2)) {
-            nextBg->position.x = -1;
+        if (nextBg->scroll == 1) {
+            nextBg->position.x += nextBg->velocity.x;
+            nextBg->position.y += nextBg->velocity.y;
         }
 
-        if (nextBg->position.y < -(nextBg->dimensions.y/2)) {
-            nextBg->position.y = -1;
-        }
+        if (nextBg->repeatScroll == 1) {
+            if (nextBg->position.x < -(nextBg->dimensions.x/2)) {
+                nextBg->position.x = -1;
+            }
 
+            if (nextBg->position.y < -(nextBg->dimensions.y/2)) {
+                nextBg->position.y = -1;
+            }
+        }
+    }
+    // Process Player Motion Input
+    if (self->upPressed == 1 ) { 
+        if (self->player->position.y > 0) {
+            self->player->position.y -= self->player->velocity.y;
+        } else {
+            self->player->position.y = 0;
+        }
     }
 
+    if (self->downPressed == 1) {
+        if(self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
+            self->player->position.y += self->player->velocity.y;
+        }
+        else {
+            self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
+        }
+    }
+ 
+    if (self->leftPressed == 1) { 
+        if  (self->player->position.x > 0) {
+            self->player->position.x -= self->player->velocity.x;
+        } else {
+            self->player->position.x = 0;
+        }
+    }
+
+    if (self->rightPressed == 1) {
+        if(self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
+            self->player->position.x += self->player->velocity.x;
+        } else {
+            self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
+        }
+    }
+    // Done
     return ENGINE_OK;
 }  
 
 int engineDefaultRenderHandler(engine_t* self) {
+    // Clear
     SDL_RenderClear(self->renderer);
+    // Render Backgrounds
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
         background_t *nextBg = self->backgrounds[bgIndex];
         if (nextBg == NULL) {
@@ -217,6 +259,14 @@ int engineDefaultRenderHandler(engine_t* self) {
         dest.y = nextBg->position.y;
         SDL_RenderCopy(self->renderer, nextBg->texture, NULL, &dest);
     }
+    // Render Player
+    SDL_Rect playerDest;
+    playerDest.w = self->player->sprite->dimensions.x;
+    playerDest.h = self->player->sprite->dimensions.y;
+    playerDest.x = self->player->position.x;
+    playerDest.y = self->player->position.y;
+    SDL_RenderCopy(self->renderer,self->player->sprite->texture,NULL,&playerDest);
+    // Present
     SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
 }  

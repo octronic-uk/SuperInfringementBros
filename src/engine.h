@@ -8,11 +8,13 @@
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
 #define ENGINE_QUIT   1
-#define MAX_BACKGROUNDS 4
+#define MAX_BACKGROUNDS 5 
 
 typedef struct engine engine_t;
 
 struct engine {
+    int screenWidth;
+    int screenHeight;
     // SDL Objects
     SDL_Window   *window;
     SDL_Renderer *renderer;

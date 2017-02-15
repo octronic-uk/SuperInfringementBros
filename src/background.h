@@ -9,6 +9,8 @@ typedef struct {
     vector2i_t   velocity;
     vector2i_t   position;
     vector2i_t   dimensions;
+    char scroll;
+    char repeatScroll;
 } background_t;
 
 background_t* backgroundAllocate(char* path, SDL_Renderer*);

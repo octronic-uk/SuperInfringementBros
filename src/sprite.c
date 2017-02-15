@@ -2,18 +2,30 @@
 #include <stdio.h>
 #include "sprite.h"
 
-
-sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, int animFrames, const SDL_PixelFormat* screenFormat) {
+sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
     printf("Allocating new sprite_t\n");
     // Object
     sprite_t *s = (sprite_t*)malloc(sizeof(sprite_t));
     // Image Surface
-    SDL_Surface* tmp  = IMG_Load(path);
-    s->surface = SDL_ConvertSurface(tmp,screenFormat,0); 
-    SDL_FreeSurface(tmp);
+    s->texture = IMG_LoadTexture(renderer, path);
+    // Dimensions
+    SDL_QueryTexture(s->texture,NULL,NULL,&(s->dimensions.x),&(s->dimensions.y));
     // Source Rectangle
-    s->dimensions.x = tileWidth;
-    s->dimensions.y = tileHeight;
+    s->tileDimensions.x = 0;
+    s->tileDimensions.y = 0;
+    // Frames
+    s->numFrames = 0;
+    s->frameOrder = NULL; 
+    return s;
+}
+
+
+sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, int animFrames, SDL_Renderer* renderer) {
+    // Sprite Obj
+    sprite_t *s = spriteAllocate(path,renderer);
+    // Tile Dimensions
+    s->tileDimensions.x = tileWidth;
+    s->tileDimensions.y = tileHeight;
     // Frames
     if (animFrames > 0) {
         s->numFrames = animFrames;
@@ -29,9 +41,9 @@ void spriteDestroy(sprite_t *self) {
     printf("Destroying sprite_t\n");
     if (self != NULL) {
         // Source Texture
-        if (self->surface != NULL) {
-            SDL_FreeSurface(self->surface);
-            self->surface = NULL;
+        if (self->texture != NULL) {
+            SDL_DestroyTexture(self->texture);
+            self->texture = NULL;
         }
         // Anim Frames
         if (self->frameOrder != NULL) {

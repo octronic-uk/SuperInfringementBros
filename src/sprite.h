@@ -5,14 +5,16 @@
 #include "vector.h"
 
 typedef struct {
-    SDL_Surface *surface;
+    SDL_Texture* texture;
     vector2i_t   dimensions;
+    vector2i_t   tileDimensions;
     // Animation
     int numFrames;
     vector2i_t *frameOrder;
 } sprite_t;
 
-sprite_t* spriteAllocateSpriteSheet(char*, int, int, int, const SDL_PixelFormat*);
+sprite_t* spriteAllocate(char*,SDL_Renderer*);
+sprite_t* spriteAllocateSpriteSheet(char*, int, int, int, SDL_Renderer*);
 void spriteDestroy(sprite_t*);
 
 #endif // SPRITE_H

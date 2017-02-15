@@ -24,6 +24,8 @@ background_t* backgroundAllocate(char* path, SDL_Renderer *renderer) {
     bg->velocity.y = 0;
     bg->position.x = 0;
     bg->position.y = 0;
+    bg->scroll = 0;
+    bg->repeatScroll = 0;
 
     SDL_QueryTexture(bg->texture,NULL,NULL,&(bg->dimensions.x),&(bg->dimensions.y));
 
