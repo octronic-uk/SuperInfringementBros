@@ -16,17 +16,21 @@ sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
     // Frames
     s->numFrames = 0;
     s->frameOrder = NULL; 
+    s->frameDuration = 0;
+    s->frameDurationRemaining = 0;
     return s;
 }
 
 
-sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, int animFrames, SDL_Renderer* renderer) {
+sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, int animFrames, int frameDuration, SDL_Renderer* renderer) {
     // Sprite Obj
     sprite_t *s = spriteAllocate(path,renderer);
     // Tile Dimensions
     s->tileDimensions.x = tileWidth;
     s->tileDimensions.y = tileHeight;
     s->currentFrame = 0;
+    s->frameDuration = frameDuration;
+    s->frameDurationRemaining = frameDuration;
     // Frames
     if (animFrames > 0) {
         s->numFrames = animFrames;
@@ -38,10 +42,15 @@ sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, i
     return s;
 }
 
-void spriteAdvanceFrame(sprite_t* self) {
-    self->currentFrame++;
-    if (self->currentFrame > self->numFrames) {
-        self->currentFrame = 0;
+void spriteAdvanceFrame(sprite_t* self, float timeDelta) {
+    if (self->frameDurationRemaining < 0) {
+        self->frameDurationRemaining = self->frameDuration;
+        self->currentFrame++;
+        if (self->currentFrame > self->numFrames-1) {
+            self->currentFrame = 0;
+        }
+    } else {
+        self->frameDurationRemaining -= timeDelta;
     }
 }
 

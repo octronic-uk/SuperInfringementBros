@@ -16,7 +16,6 @@ engine_t* engineAllocate() {
         engine->projectiles[pIndex] = NULL; 
     }
 
-
     engine->currentTime = 0.0f;
     engine->lastTime    = 0.0f;
     engine->deltaTime   = 0.0f;;
@@ -74,12 +73,12 @@ int engineInit(engine_t* self, int width, int height, char* title) {
         SDL_Quit();
         return 1;
     }
- 
+
     if (_setupResources(self) != ENGINE_OK) {
         printf("Error during resource setup\n");
         return ENGINE_ERROR;
     }
-  
+
     return 0;
 }
 
@@ -168,16 +167,8 @@ int engineDefaultInputHandler(engine_t* self) {
                     self->debug = 1;
                 }
                 break;
-            case SDLK_a:
-                for (int projIndex = 0; projIndex < MAX_BACKGROUNDS; projIndex++) {
-                    if (self->projectiles[projIndex] == NULL) {
-                        projectile_t *fireball = projectileAllocate(fireballSprite);
-                        fireball->velocity.x = self->player->velocity.x + 0.1f;
-                        fireball->velocity.y = self->player->velocity.y + 0.0f;
-                        self->projectiles[projIndex] = fireball;
-                        break;
-                    }
-                }
+            case SDLK_SPACE:
+                self->aBtnPressed = 1;
                 break;
             case SDLK_UP:
                 self->upPressed = 1;
@@ -206,6 +197,9 @@ int engineDefaultInputHandler(engine_t* self) {
                 break;
             case SDLK_RIGHT:
                 self->rightPressed = 0;
+                break;
+            case SDLK_SPACE:
+                self->aBtnPressed = 0;
                 break;
         }
     } 
@@ -257,7 +251,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
             self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
         }
     }
- 
+
     if (self->leftPressed == 1) { 
         if  (self->player->position.x > 0) {
             self->player->position.x -= self->player->velocity.x*self->deltaTime;
@@ -273,6 +267,25 @@ int engineDefaultUpdateHandler(engine_t* self) {
             self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
         }
     }
+
+    if (self->aBtnPressed) {
+        _spawnProjectile(self);
+    }
+
+    // Update Projectiles
+    for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
+        projectile_t *nextProj = self->projectiles[projIndex];
+        if (nextProj == NULL) {
+            continue;
+        } 
+        if (nextProj->position.x > self->screenWidth) {
+            projectileDestroy(nextProj);
+            self->projectiles[projIndex] = NULL;
+        }
+        nextProj->position.x += nextProj->velocity.x*self->deltaTime;
+        nextProj->position.y += nextProj->velocity.y*self->deltaTime;
+    }
+
     // Done
     return ENGINE_OK;
 }  
@@ -306,12 +319,14 @@ int engineDefaultRenderHandler(engine_t* self) {
         if (nextProj == NULL) {
             continue;
         } 
-        SDL_Rect dest;
-        dest.w = nextProj->sprite->dimensions.x;
-        dest.h = nextProj->sprite->dimensions.y;
+        SDL_Rect src, dest;
+        src = spriteGetCurrentFrameRect(nextProj->sprite);
+        dest.w = nextProj->sprite->tileDimensions.x;
+        dest.h = nextProj->sprite->tileDimensions.y;
         dest.x = nextProj->position.x;
         dest.y = nextProj->position.y;
-        SDL_RenderCopy(self->renderer, nextProj->sprite->texture, NULL, &dest);
+        SDL_RenderCopy(self->renderer, nextProj->sprite->texture, &src, &dest);
+        spriteAdvanceFrame(nextProj->sprite,self->deltaTime);
     }
     // Present
     SDL_RenderPresent(self->renderer);
@@ -321,7 +336,7 @@ int engineDefaultRenderHandler(engine_t* self) {
 
 int _setupResources(engine_t* engine) {
     // Setup Player
-    playerSprite = spriteAllocate("res/tiny_ship.png",engine->renderer);
+    sprite_t* playerSprite = spriteAllocate("res/tiny_ship.png",engine->renderer);
     engine->player = playerAllocate(playerSprite);
     engine->player->velocity.x = 0.5f;
     engine->player->velocity.y = 0.5f;
@@ -355,23 +370,41 @@ int _setupResources(engine_t* engine) {
         bg->velocity.x = -0.4f;
         engine->backgrounds[3] = bg;
     }
+
+    return ENGINE_OK;
+}
+
+sprite_t* _createFireballSprite(engine_t* engine) {
     // Projectile
-    fireballSprite = spriteAllocateSpriteSheet("res/fireball.png",64,64,4,engine->renderer);
+    sprite_t* fireballSprite = spriteAllocateSpriteSheet("res/fireball_16.png",16,16,4,50,engine->renderer);
     // Animation Frames
     // 0 
     fireballSprite->frameOrder[0].x = 0;
     fireballSprite->frameOrder[0].y = 0;
     // 1
-    fireballSprite->frameOrder[0].x = 1;
-    fireballSprite->frameOrder[0].y = 0;
+    fireballSprite->frameOrder[1].x = 1;
+    fireballSprite->frameOrder[1].y = 0;
     // 2
-    fireballSprite->frameOrder[0].x = 2;
-    fireballSprite->frameOrder[0].y = 0;
+    fireballSprite->frameOrder[2].x = 2;
+    fireballSprite->frameOrder[2].y = 0;
     // 3
-    fireballSprite->frameOrder[0].x = 3;
-    fireballSprite->frameOrder[0].y = 0;
+    fireballSprite->frameOrder[3].x = 3;
+    fireballSprite->frameOrder[3].y = 0;
 
-    return ENGINE_OK;
+    return fireballSprite;
 }
 
-
+void _spawnProjectile(engine_t* self) {
+    for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
+        if (self->projectiles[projIndex] == NULL) {
+            sprite_t* fireballSprite = _createFireballSprite(self);
+            projectile_t *fireball = projectileAllocate(fireballSprite);
+            fireball->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
+            fireball->position.y = self->player->position.y+self->player->sprite->dimensions.y/2;
+            fireball->velocity.x = self->player->velocity.x + 0.25f;
+            fireball->velocity.y = 0.0f;
+            self->projectiles[projIndex] = fireball;
+            break;
+        }
+    }
+}

@@ -13,9 +13,6 @@
 #define MAX_BACKGROUNDS 5 
 #define MAX_PROJECTILES 100
 
-sprite_t* fireballSprite;
-sprite_t* playerSprite;
-
 typedef struct engine engine_t;
 
 struct engine {
@@ -54,6 +51,11 @@ int  engineLoop(engine_t* self);
 int  engineDefaultInputHandler(engine_t* self);
 int  engineDefaultUpdateHandler(engine_t* self);
 int  engineDefaultRenderHandler(engine_t* self);
-int  _setupResources(engine_t* self);
+
+
+// 'Private' Functions 
+int       _setupResources(engine_t* self);
+sprite_t* _createFireballSprite(engine_t* engine);
+void      _spawnProjectile(engine_t* self);
 
 #endif // ENGINE_H

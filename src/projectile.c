@@ -1,17 +1,12 @@
 #include "projectile.h"
 
 projectile_t* projectileAllocate(sprite_t* sprite) {
-
     projectile_t *self = (projectile_t*)malloc(sizeof(projectile_t));
-
     self->sprite = sprite;
-
     self->position.x = 0;
     self->position.y = 0;
-
     self->velocity.x = 0.0f;
     self->velocity.y = 0.0f;
-
     return self;
 }
 
