@@ -6,8 +6,10 @@ int setup(engine_t* engine) {
     // Setup Player
     sprite_t* playerSprite = spriteAllocate("res/mario.png",engine->renderer);
     engine->player = playerAllocate(playerSprite);
-    engine->player->velocity.x = 20;
-    engine->player->velocity.y = 10;
+    engine->player->velocity.x = 5;
+    engine->player->velocity.y = 5;
+    engine->player->position.x = 20;
+    engine->player->position.y = 325;
     // Setup Backgrounds
     background_t *bg = backgroundAllocate("res/sky.png",engine->renderer);
     if (bg!=NULL) {

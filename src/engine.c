@@ -209,7 +209,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
     // Process Player Motion Input
     if (self->upPressed == 1 ) { 
         if (self->player->position.y > 0) {
-            self->player->position.y -= self->player->velocity.y;
+            self->player->position.y -= self->player->velocity.y*self->deltaTime;
         } else {
             self->player->position.y = 0;
         }
@@ -217,7 +217,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
 
     if (self->downPressed == 1) {
         if(self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
-            self->player->position.y += self->player->velocity.y;
+            self->player->position.y += self->player->velocity.y*self->deltaTime;
         }
         else {
             self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
@@ -226,7 +226,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
  
     if (self->leftPressed == 1) { 
         if  (self->player->position.x > 0) {
-            self->player->position.x -= self->player->velocity.x;
+            self->player->position.x -= self->player->velocity.x*self->deltaTime;
         } else {
             self->player->position.x = 0;
         }
@@ -234,7 +234,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
 
     if (self->rightPressed == 1) {
         if(self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
-            self->player->position.x += self->player->velocity.x;
+            self->player->position.x += self->player->velocity.x*self->deltaTime;
         } else {
             self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
         }
