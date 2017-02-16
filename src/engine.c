@@ -401,7 +401,7 @@ void _spawnProjectile(engine_t* self) {
             projectile_t *fireball = projectileAllocate(fireballSprite);
             fireball->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
             fireball->position.y = self->player->position.y+self->player->sprite->dimensions.y/2;
-            fireball->velocity.x = self->player->velocity.x + 0.25f;
+            fireball->velocity.x = 0.2f;
             fireball->velocity.y = 0.0f;
             self->projectiles[projIndex] = fireball;
             break;
