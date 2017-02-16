@@ -5,23 +5,28 @@ engine_t* engineAllocate() {
     printf("Allocating new engine_t\n");
     engine_t* engine    = (engine_t*)malloc(sizeof(engine_t));
     engine->event       = (SDL_Event*)malloc(sizeof(SDL_Event));
-
+    // Malloc Backgrounds Array
     engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*MAX_BACKGROUNDS);
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
         engine->backgrounds[bgIndex] = NULL; 
     }
-
-    engine->projectiles = (projectile_t**)malloc(sizeof(projectile_t)*MAX_PROJECTILES);
+    // Malloc Projectiles Array
+    engine->projectiles = (projectile_t**)malloc(sizeof(projectile_t*)*MAX_PROJECTILES);
     for (int pIndex = 0; pIndex < MAX_PROJECTILES; pIndex++) {
         engine->projectiles[pIndex] = NULL; 
     }
-
+    // Malloc SFX Array
+    engine->sfx = (sfx_t**)malloc(sizeof(sfx_t*)*MAX_SFX);
+    for (int sIndex = 0; sIndex < MAX_SFX; sIndex++) {
+        engine->sfx[sIndex] = NULL; 
+    }
+    // Init Variables
     engine->currentTime = 0.0f;
     engine->lastTime    = 0.0f;
     engine->deltaTime   = 0.0f;;
 
-    engine->window         = NULL;
-    engine->renderer       = NULL;
+    engine->window   = NULL;
+    engine->renderer = NULL;
 
     engine->inputFunction  = NULL;
     engine->updateFunction = NULL;
@@ -31,9 +36,11 @@ engine_t* engineAllocate() {
     engine->downPressed  = 0;
     engine->leftPressed  = 0;
     engine->rightPressed = 0;
-
     engine->aBtnPressed  = 0;
     engine->bBtnPressed  = 0;
+
+    engine->lastProjectile = 0.0f;
+    engine->projectileDelay = DEFAULT_PROJECTILE_DELAY;
 
     return engine;
 }
@@ -54,6 +61,13 @@ int engineInit(engine_t* self, int width, int height, char* title) {
     }
     if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
         printf("Engine: failed to init SDL image %s\n",IMG_GetError());
+        return 1;
+    }
+
+    // open 44.1KHz, signed 16bit, system byte order,
+    //      stereo audio, using 1024 byte chunks
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024)==-1) {
+        printf("Mix_OpenAudio: %s\n", Mix_GetError());
         return 1;
     }
 
@@ -107,7 +121,27 @@ void engineDestroy(engine_t* self) {
             }
             self->backgrounds = NULL;
         }
+
+        if (self->sfx != NULL) {
+            for (int sIndex=0;sIndex<MAX_SFX;sIndex++) {
+                if (self->sfx[sIndex] == NULL) {
+                    sfxDestroy(self->sfx[sIndex]);
+                    self->sfx[sIndex] = NULL;
+                }
+            }
+        }
+
+        if (self->projectiles != NULL) {
+            for (int pIndex=0;pIndex<MAX_PROJECTILES;pIndex++) {
+                if (self->projectiles[pIndex] == NULL) {
+                    projectileDestroy(self->projectiles[pIndex]);
+                    self->projectiles[pIndex] = NULL;
+                }
+            }
+        }
+
     }
+    Mix_CloseAudio();
     IMG_Quit();
     SDL_Quit();
 }
@@ -235,36 +269,67 @@ int engineDefaultUpdateHandler(engine_t* self) {
         }
     }
     // Process Player Motion Input
-    if (self->upPressed == 1 ) { 
-        if (self->player->position.y > 0) {
-            self->player->position.y -= self->player->velocity.y*self->deltaTime;
+    
+    // Set Velocities
+ 
+    // X Axis
+    if (self->leftPressed == 1 && self->rightPressed == 1) {
+        self->player->velocity.x = 0.0f;
+    }
+    else if (self->leftPressed == 1 ) { 
+        self->player->velocity.x = -self->player->speed*self->deltaTime;
+    }
+    else if (self->rightPressed == 1) {
+        self->player->velocity.x = self->player->speed*self->deltaTime;
+    }
+    else {
+        self->player->velocity.x = 0.0f;
+    }
+    // Move X
+    if (self->player->velocity.x < 0.0f)  { // Left
+        if (self->player->position.x > 0) {
+            self->player->position.x += self->player->velocity.x;
         } else {
-            self->player->position.y = 0;
+            self->player->position.x = 0;
+            self->player->velocity.x = 0.0f;
+        }
+    } 
+    else if (self->player->velocity.x > 0.0f) { // Right
+        if (self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
+            self->player->position.x += self->player->velocity.x;
+        }
+        else {
+            self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
+            self->player->velocity.x = 0.0f;
         }
     }
-
-    if (self->downPressed == 1) {
-        if(self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
-            self->player->position.y += self->player->velocity.y*self->deltaTime;
+   
+    // Y Axis
+    if (self->upPressed == 1 && self->downPressed == 1) {
+        self->player->velocity.y = 0.0f;
+    }
+    else if (self->upPressed == 1 ) { 
+        self->player->velocity.y = -self->player->speed*self->deltaTime;
+    } else if (self->downPressed == 1){
+        self->player->velocity.y = self->player->speed*self->deltaTime;
+    } else {
+        self->player->velocity.y = 0.0f;
+    }
+    // Move Y
+    if (self->player->velocity.y < 0.0f)  { // Up 
+        if (self->player->position.y > 0) {
+            self->player->position.y += self->player->velocity.y;
+        } else {
+            self->player->position.y = 0;
+            self->player->velocity.y = 0.0f;
+        }
+    } else if (self->player->velocity.y > 0) { // Down
+        if (self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
+            self->player->position.y += self->player->velocity.y;
         }
         else {
             self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
-        }
-    }
-
-    if (self->leftPressed == 1) { 
-        if  (self->player->position.x > 0) {
-            self->player->position.x -= self->player->velocity.x*self->deltaTime;
-        } else {
-            self->player->position.x = 0;
-        }
-    }
-
-    if (self->rightPressed == 1) {
-        if(self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
-            self->player->position.x += self->player->velocity.x*self->deltaTime;
-        } else {
-            self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
+            self->player->velocity.y = 0.0f;
         }
     }
 
@@ -336,47 +401,47 @@ int engineDefaultRenderHandler(engine_t* self) {
 
 int _setupResources(engine_t* engine) {
     // Setup Player
-    sprite_t* playerSprite = spriteAllocate("res/tiny_ship.png",engine->renderer);
+    sprite_t* playerSprite = spriteAllocate("res/gfx/tiny_ship.png",engine->renderer);
     engine->player = playerAllocate(playerSprite);
-    engine->player->velocity.x = 0.5f;
-    engine->player->velocity.y = 0.5f;
     engine->player->position.x = 20;
     engine->player->position.y = engine->screenHeight/2-playerSprite->dimensions.y/2;
     // Setup Backgrounds
-    background_t *bg = backgroundAllocate("res/sky.png",engine->renderer);
+    background_t *bg = backgroundAllocate("res/gfx/sky.png",engine->renderer);
     if (bg!=NULL) {
         bg->scroll = 0;
         bg->repeatScroll = 0;
         engine->backgrounds[0] = bg;
     }
-    bg = backgroundAllocate("res/clouds.png",engine->renderer);
+    bg = backgroundAllocate("res/gfx/clouds.png",engine->renderer);
     if (bg!=NULL) {
         bg->scroll = 1;
         bg->repeatScroll = 1;
         bg->velocity.x = -0.1f;
         engine->backgrounds[1] = bg;
     }
-    bg = backgroundAllocate("res/clouds_2.png",engine->renderer);
+    bg = backgroundAllocate("res/gfx/clouds_2.png",engine->renderer);
     if (bg!=NULL) {
         bg->scroll = 1;
         bg->repeatScroll = 1;
         bg->velocity.x = -0.2f;
         engine->backgrounds[2] = bg;
     }
-    bg = backgroundAllocate("res/ground.png",engine->renderer);
+    bg = backgroundAllocate("res/gfx/ground.png",engine->renderer);
     if (bg!=NULL) {
         bg->scroll = 1;
         bg->repeatScroll = 1;
         bg->velocity.x = -0.4f;
         engine->backgrounds[3] = bg;
     }
+    // Allocate Fireball SFX
+    engine->sfx[0] = sfxAllocate("res/sfx/fireball.wav",0);
 
     return ENGINE_OK;
 }
 
 sprite_t* _createFireballSprite(engine_t* engine) {
     // Projectile
-    sprite_t* fireballSprite = spriteAllocateSpriteSheet("res/fireball_16.png",16,16,4,50,engine->renderer);
+    sprite_t* fireballSprite = spriteAllocateSpriteSheet("res/gfx/fireball_16.png",16,16,4,50,engine->renderer);
     // Animation Frames
     // 0 
     fireballSprite->frameOrder[0].x = 0;
@@ -395,15 +460,22 @@ sprite_t* _createFireballSprite(engine_t* engine) {
 }
 
 void _spawnProjectile(engine_t* self) {
+    // Has enough time passed
+    if (SDL_GetTicks() < self->lastProjectile + self->projectileDelay) {
+        return;
+    }
+    // New Projectile
     for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
             sprite_t* fireballSprite = _createFireballSprite(self);
             projectile_t *fireball = projectileAllocate(fireballSprite);
             fireball->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
             fireball->position.y = self->player->position.y+self->player->sprite->dimensions.y/2;
-            fireball->velocity.x = 0.2f;
-            fireball->velocity.y = 0.0f;
+            fireball->velocity.x = DEFAULT_PROJECTILE_VELOCITY_X;
+            fireball->velocity.y = DEFAULT_PROJECTILE_VELOCITY_Y;
             self->projectiles[projIndex] = fireball;
+            self->lastProjectile = SDL_GetTicks();
+            sfxPlay(self->sfx[0]);
             break;
         }
     }

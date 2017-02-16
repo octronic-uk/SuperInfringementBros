@@ -2,15 +2,18 @@
 #define ENGINE_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_Mixer.h>
 #include "background.h"
 #include "player.h"
 #include "projectile.h"
+#include "sfx.h"
 
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
 #define ENGINE_QUIT   1
 
 #define MAX_BACKGROUNDS 5 
+#define MAX_SFX 10
 #define MAX_PROJECTILES 100
 
 typedef struct engine engine_t;
@@ -23,7 +26,6 @@ struct engine {
     SDL_Window   *window;
     SDL_Renderer *renderer;
     SDL_Event    *event;
-    background_t **backgrounds;
     // Timing
     float currentTime;
     float lastTime;
@@ -33,8 +35,13 @@ struct engine {
     int (*renderFunction)(engine_t*);
     int (*updateFunction)(engine_t*);
     // Engine things
-    player_t *player;
+    player_t      *player;
     projectile_t **projectiles;
+    sfx_t        **sfx;
+    background_t **backgrounds;
+    // Projectlie Vars
+    float lastProjectile;
+    float projectileDelay;
     // Input
     char upPressed;
     char downPressed;

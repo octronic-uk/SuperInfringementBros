@@ -12,6 +12,7 @@ player_t* playerAllocate(sprite_t* sprite) {
     p->health = 0;
     p->score  = 0;
     p->sprite = sprite;
+    p->speed = DEFAULT_PLAYER_SPEED;
     return p;
 }
 
