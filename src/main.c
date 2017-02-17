@@ -7,7 +7,7 @@
     // Init & Setup
     engine_t *engine = engineAllocate();
     engine->debug = 0;
-    int initResult = engineInit(engine,800,512,"SuperInfringementBros!");
+    int initResult = engineInit(engine,1280 ,720, "SuperInfringementBros!");
 
     if (initResult != 0) {
         printf("Engine init failed\n");

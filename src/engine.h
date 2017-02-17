@@ -7,6 +7,7 @@
 #include "player.h"
 #include "projectile.h"
 #include "sfx.h"
+#include "enemy.h"
 
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
@@ -15,6 +16,7 @@
 #define MAX_BACKGROUNDS 5 
 #define MAX_SFX 10
 #define MAX_PROJECTILES 100
+#define MAX_ENEMIES 50
 
 typedef struct engine engine_t;
 
@@ -39,6 +41,7 @@ struct engine {
     projectile_t **projectiles;
     sfx_t        **sfx;
     background_t **backgrounds;
+    enemy_t      **enemies;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;

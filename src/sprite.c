@@ -11,8 +11,8 @@ sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
     // Dimensions
     SDL_QueryTexture(s->texture,NULL,NULL,&(s->dimensions.x),&(s->dimensions.y));
     // Source Rectangle
-    s->tileDimensions.x = 0;
-    s->tileDimensions.y = 0;
+    s->tileDimensions.x = s->dimensions.x;
+    s->tileDimensions.y = s->dimensions.y;
     // Frames
     s->numFrames = 0;
     s->frameOrder = NULL; 
@@ -43,6 +43,11 @@ sprite_t* spriteAllocateSpriteSheet(char* path, int tileWidth, int tileHeight, i
 }
 
 void spriteAdvanceFrame(sprite_t* self, float timeDelta) {
+
+    if (self->numFrames == 0) {
+        return;
+    }
+
     if (self->frameDurationRemaining < 0) {
         self->frameDurationRemaining = self->frameDuration;
         self->currentFrame++;
@@ -74,11 +79,16 @@ void spriteDestroy(sprite_t *self) {
     }
 }
 
-SDL_Rect spriteGetCurrentFrameRect(sprite_t* self) {
-    SDL_Rect frameRect;
-    frameRect.w = self->tileDimensions.x;
-    frameRect.h = self->tileDimensions.y;
-    frameRect.x = self->frameOrder[self->currentFrame].x*self->tileDimensions.x;
-    frameRect.y = self->frameOrder[self->currentFrame].y*self->tileDimensions.y;
+SDL_Rect *spriteGetCurrentFrameRect(sprite_t* self) {
+
+    if (self->numFrames == 0) {
+        return NULL;
+    }
+
+    SDL_Rect *frameRect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+    frameRect->w = self->tileDimensions.x;
+    frameRect->h = self->tileDimensions.y;
+    frameRect->x = self->frameOrder[self->currentFrame].x*self->tileDimensions.x;
+    frameRect->y = self->frameOrder[self->currentFrame].y*self->tileDimensions.y;
     return frameRect;
 }

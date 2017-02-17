@@ -25,6 +25,6 @@ sprite_t* spriteAllocateSpriteSheet(
 );
 void spriteDestroy(sprite_t* self);
 void spriteAdvanceFrame(sprite_t* self, float timeDelta);
-SDL_Rect spriteGetCurrentFrameRect(sprite_t* self);
+SDL_Rect *spriteGetCurrentFrameRect(sprite_t* self);
 
 #endif // SPRITE_H
