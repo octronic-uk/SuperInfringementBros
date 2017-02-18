@@ -1,12 +1,20 @@
 #include "text.h"
 #include <stdio.h>
 
-text_t *textAllocate(char* fontPath, char* str, int size) {
+text_t *textAllocate(char* fontPath, int size, int bufferSize) {
     printf("Allocating text_t from %s, size %d\n",fontPath,size);
     text_t *text = (text_t*)malloc(sizeof(text_t));
 
     text->font = TTF_OpenFont(fontPath,size);
-    text->text = str;
+    if (text->font == NULL) {
+        printf("Unable to open font %s. %s\n",fontPath,TTF_GetError());
+        free(text);
+        return NULL;
+    }
+
+    text->bufferSize = bufferSize;
+    text->text = (char*)malloc(sizeof(char)*text->bufferSize);
+    memset(text->text,0,text->bufferSize);
 
     text->position.x = 0;
     text->position.y = 0;
@@ -24,6 +32,10 @@ void textDestroy(text_t* self) {
         if (self->font != NULL) {
             TTF_CloseFont(self->font);
             self->font = NULL;
+        }
+        if(self->text != NULL) {
+            free (self->text);
+            self->text = NULL;
         }
         free (self);
     }

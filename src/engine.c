@@ -5,7 +5,6 @@ engine_t* engineAllocate() {
     printf("Allocating new engine_t\n");
     engine_t* engine = (engine_t*)malloc(sizeof(engine_t));
     engine->event    = (SDL_Event*)malloc(sizeof(SDL_Event));
-    engine->score    = textAllocate("Score:","res/fonts/arcade.ttf",16);
     // Malloc Backgrounds Array
     engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*MAX_BACKGROUNDS);
     for (int bgIndex = 0; bgIndex < MAX_BACKGROUNDS; bgIndex++) {
@@ -225,9 +224,7 @@ int engineDefaultInputHandler(engine_t* self) {
                     self->debug = 1;
                 }
                 break;
-            case SDLK_SPACE:
-                self->aBtnPressed = 1;
-                break;
+
             case SDLK_UP:
                 self->upPressed = 1;
                 break;
@@ -239,6 +236,12 @@ int engineDefaultInputHandler(engine_t* self) {
                 break;
             case SDLK_RIGHT:
                 self->rightPressed = 1;
+                break;
+            case SDLK_a:
+                self->aBtnPressed = 1;
+                break;
+            case SDLK_s:
+                self->bBtnPressed = 1;
                 break;
         }
     } else if (self->event->type == SDL_KEYUP) {
@@ -256,8 +259,11 @@ int engineDefaultInputHandler(engine_t* self) {
             case SDLK_RIGHT:
                 self->rightPressed = 0;
                 break;
-            case SDLK_SPACE:
+            case SDLK_a:
                 self->aBtnPressed = 0;
+                break;
+            case SDLK_s:
+                self->bBtnPressed = 0;
                 break;
         }
     } 
@@ -337,7 +343,7 @@ void _updatePlayer(engine_t* self) {
             self->player->velocity.x = 0.0f;
         }
     }
-   
+
     // Y Axis
     if (self->upPressed == 1 && self->downPressed == 1) {
         self->player->velocity.y = 0.0f;
@@ -367,13 +373,17 @@ void _updatePlayer(engine_t* self) {
         }
     }
 
-    if (self->aBtnPressed) {
-        _spawnProjectile(self);
+    if (self->aBtnPressed == 1) {
+        _spawnBoomerang(self);
+    }
+    else if (self->bBtnPressed == 1) {
+        _spawnPunch(self);
     }
 }
 
 void _updateEnemies(engine_t* self) {
     // Update Enemies
+    int activeEnemies = 0;
     for (int eIndex = 0; eIndex < MAX_ENEMIES; eIndex++) {
         enemy_t *nextEnemy = self->enemies[eIndex];
         // Not set
@@ -381,30 +391,74 @@ void _updateEnemies(engine_t* self) {
             continue;
         } 
         // Out of bounds
-        if (nextEnemy->position.x < 0-nextEnemy->sprite->dimensions.x) {
+        if (nextEnemy->position.x < 0-nextEnemy->sprite->dimensions.x || nextEnemy->position.x > self->screenWidth) {
             enemyDestroy(nextEnemy);
             self->enemies[eIndex] = NULL;
             continue;
         }
+        // Dead
+        if (nextEnemy->health < 0) {
+            enemyDestroy(nextEnemy);
+            self->enemies[eIndex] = NULL;
+            continue;
+        }
+
         // Needs Update
         nextEnemy->position.x += nextEnemy->velocity.x*self->deltaTime;
         nextEnemy->position.y += nextEnemy->velocity.y*self->deltaTime;
-        projectile_t** collisions = _getProjectileOnEnemyCollisions(self, self->enemies[eIndex]); 
+
+        if (self->debug == 1) {
+            printf ("Enemy Velocity %f, Decay %f\n",nextEnemy->velocity.x,nextEnemy->velocityDecay.x);
+        }
+
+        if (nextEnemy->velocity.x > 0.1) {
+            nextEnemy->velocity.x -= nextEnemy->velocityDecay.x;
+        } else if (nextEnemy->velocity.x < -0.1) {
+            nextEnemy->velocity.x += nextEnemy->velocityDecay.x;
+        } else if (nextEnemy->velocity.x < 0.1 && nextEnemy->velocity.x > -0.1) {
+            if (self->debug == 1) {
+                printf("Reset velocity\n");
+            }
+            nextEnemy->velocity.x = 0;
+            nextEnemy->velocityDecay.x = 0;
+        }
+
+        projectile_t** collisions = _getProjectileOnEnemyCollisions(self, nextEnemy); 
+
         for (int cIndex=0;cIndex<MAX_PROJECTILES;cIndex++) {
             projectile_t* collidedProjectile = collisions[cIndex];
             if (collidedProjectile == NULL) {
                 continue;
             }
+
             int i = engineGetProjectileIndex(self, collidedProjectile);
+            int whichSfx = -1;
+
             if (i >= 0) {
+
+                if (collidedProjectile->type == PROJ_TYPE_PUNCH) {
+                    whichSfx = (rand()%2)+1;
+                    nextEnemy->velocity.x = 1.0f; 
+                    nextEnemy->velocityDecay.x = 0.1; 
+                    nextEnemy->health -= 10;
+                } else if (collidedProjectile->type == PROJ_TYPE_BOOMERANG) {
+                    nextEnemy->health -= 25;
+                    whichSfx = 3;
+                }
+
+                if (whichSfx >= 0) {
+                    sfxPlay(self->sfx[whichSfx]);
+                }
+
+                self->player->score += 5;
                 self->projectiles[i] = NULL;
                 projectileDestroy(collidedProjectile); 
-                int whichSfx = (rand()%2)+1;
-                sfxPlay(self->sfx[whichSfx]);
             }
         }
         free(collisions);
+        activeEnemies++;
     }
+    printf("%d active enemies\n",activeEnemies);
 }
 
 int engineGetProjectileIndex(engine_t *self, projectile_t* projectile) {
@@ -421,12 +475,12 @@ projectile_t** _getProjectileOnEnemyCollisions(engine_t* engine, enemy_t* enemy)
     for (int pIndex = 0; pIndex < MAX_PROJECTILES; pIndex++) {
         retval[pIndex] = NULL; 
     }
-    
+
     int collisionIndex = 0;
     for (int pIndex = 0; pIndex < MAX_PROJECTILES; pIndex++) {
         projectile_t* proj = engine->projectiles[pIndex]; 
         if (proj == NULL) {
-             continue;
+            continue;
         }
         vector2i_t pPosition = proj->position;
         vector2i_t pDimensions = proj->sprite->tileDimensions;
@@ -443,6 +497,7 @@ projectile_t** _getProjectileOnEnemyCollisions(engine_t* engine, enemy_t* enemy)
 
 void _updateProjectiles(engine_t* self) {
     // Update Projectiles
+    int activeProjectiles = 0;
     for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
         projectile_t *nextProj = self->projectiles[projIndex];
         // Not set
@@ -458,7 +513,9 @@ void _updateProjectiles(engine_t* self) {
         // Needs Update
         nextProj->position.x += nextProj->velocity.x*self->deltaTime;
         nextProj->position.y += nextProj->velocity.y*self->deltaTime;
+        activeProjectiles++;
     }
+    printf("%d active projectiles\n",activeProjectiles);
 }
 
 int engineDefaultRenderHandler(engine_t* self) {
@@ -576,59 +633,127 @@ int _setupResources(engine_t* engine) {
     engine->sfx[0] = sfxAllocate("res/sfx/shoot.wav",  0);
     engine->sfx[1] = sfxAllocate("res/sfx/punch_1.wav",0);
     engine->sfx[2] = sfxAllocate("res/sfx/punch_2.wav",0);
-    //engine->sfx[3] = sfxAllocate("res/sfx/punch_3.wav",0);
-    //engine->sfx[4] = sfxAllocate("res/sfx/punch_4.wav",0);
+    engine->sfx[3] = sfxAllocate("res/sfx/boing.wav",0);
     // Setup Enemies
-    sprite_t* enemySprite = spriteAllocate("res/gfx/enemy.png",engine->renderer);
-    enemy_t* enemy = enemyAllocate(enemySprite,NULL);
-    enemy->position.x = engine->screenWidth - enemy->sprite->dimensions.x*2;
-    enemy->position.y = engine->screenHeight/2 - enemy->sprite->dimensions.y/2;
-    enemy->velocity.x = 0.0f;
-    enemy->velocity.y = 0.0f;
-    engine->enemies[0] = enemy;
+    int numEnemies = 10;
+    for (int i=0; i< numEnemies; i++) {
+        sprite_t* enemySprite = spriteAllocate("res/gfx/enemy.png",engine->renderer);
+        enemy_t* enemy = enemyAllocate(enemySprite,NULL);
+        enemy->position.x = engine->screenWidth/2 - enemy->sprite->dimensions.x/2;
+        enemy->position.y = (engine->screenHeight/(numEnemies+1)) * (i+1) - enemy->sprite->dimensions.y/2;
+        enemy->velocity.x = 0.0f;
+        enemy->velocity.y = 0.0f;
+        enemy->health = 100;
+        engine->enemies[i] = enemy;
+    }
     // Load BGM
-    engine->bgm = musicAllocate("res/bgm/polka.wav",-1);
+    engine->bgm = musicAllocate("res/bgm/japanism.wav",-1);
     musicPlay(engine->bgm);
+    // Setup Score Font
+    engine->score = textAllocate("res/fonts/blocked.ttf",32,50);
     // Done
     return ENGINE_OK;
 }
 
-sprite_t* _createFireballSprite(engine_t* engine) {
-    // Projectile
-    sprite_t* fireballSprite = spriteAllocate("res/gfx/fist.png",engine->renderer);
-
-    /*sprite_t* fireballSprite = spriteAllocateSpriteSheet("res/gfx/boomerang.png",32,32,8,25,engine->renderer);
-    // Animation Frames
+sprite_t* _createExplosionSprite(engine_t* engine) {
+    sprite_t* explosion = spriteAllocateSpriteSheet("res/gfx/explosion.png",66,64,13,10,engine->renderer);
     // 0 
-    fireballSprite->frameOrder[7].x = 0;
-    fireballSprite->frameOrder[7].y = 0;
+    explosion->frameOrder[0].x = 0;
+    explosion->frameOrder[0].y = 0;
     // 1
-    fireballSprite->frameOrder[6].x = 1;
-    fireballSprite->frameOrder[6].y = 0;
+    explosion->frameOrder[1].x = 1;
+    explosion->frameOrder[1].y = 0;
     // 2
-    fireballSprite->frameOrder[5].x = 2;
-    fireballSprite->frameOrder[5].y = 0;
-    // 3
-    fireballSprite->frameOrder[4].x = 3;
-    fireballSprite->frameOrder[4].y = 0;
+    explosion->frameOrder[2].x = 2;
+    explosion->frameOrder[2].y = 0;
+    // 3 
+    explosion->frameOrder[3].x = 3;
+    explosion->frameOrder[3].y = 0;
     // 4
-    fireballSprite->frameOrder[3].x = 4;
-    fireballSprite->frameOrder[3].y = 0;
+    explosion->frameOrder[4].x = 4;
+    explosion->frameOrder[4].y = 0;
+    // 5
+    explosion->frameOrder[5].x = 5;
+    explosion->frameOrder[5].y = 0;
+    // 6
+    explosion->frameOrder[6].x = 6;
+    explosion->frameOrder[6].y = 0;
+    // 7
+    explosion->frameOrder[7].x = 7;
+    explosion->frameOrder[7].y = 0;
+    // 8
+    explosion->frameOrder[8].x = 8;
+    explosion->frameOrder[8].y = 0;
+    // 9
+    explosion->frameOrder[9].x = 9;
+    explosion->frameOrder[9].y = 0;
+    // 10
+    explosion->frameOrder[10].x = 10;
+    explosion->frameOrder[10].y = 0;
+    // 11
+    explosion->frameOrder[11].x = 11;
+    explosion->frameOrder[11].y = 0;
+    // 12
+    explosion->frameOrder[12].x = 12;
+    explosion->frameOrder[12].y = 0;
+    
+    return explosion;
+}
+sprite_t* _createBoomerangSprite(engine_t* engine) {
+    sprite_t* boomerangSprite = spriteAllocateSpriteSheet("res/gfx/boomerang.png",32,32,8,25,engine->renderer);
+    // 0 
+    boomerangSprite->frameOrder[7].x = 0;
+    boomerangSprite->frameOrder[7].y = 0;
+    // 1
+    boomerangSprite->frameOrder[6].x = 1;
+    boomerangSprite->frameOrder[6].y = 0;
+    // 2
+    boomerangSprite->frameOrder[5].x = 2;
+    boomerangSprite->frameOrder[5].y = 0;
+    // 3
+    boomerangSprite->frameOrder[4].x = 3;
+    boomerangSprite->frameOrder[4].y = 0;
+    // 4
+    boomerangSprite->frameOrder[3].x = 4;
+    boomerangSprite->frameOrder[3].y = 0;
     // 5 
-    fireballSprite->frameOrder[2].x = 5;
-    fireballSprite->frameOrder[2].y = 0;
+    boomerangSprite->frameOrder[2].x = 5;
+    boomerangSprite->frameOrder[2].y = 0;
     // 6 
-    fireballSprite->frameOrder[1].x = 6;
-    fireballSprite->frameOrder[1].y = 0;
+    boomerangSprite->frameOrder[1].x = 6;
+    boomerangSprite->frameOrder[1].y = 0;
     // 7 
-    fireballSprite->frameOrder[0].x = 7;
-    fireballSprite->frameOrder[0].y = 0;
+    boomerangSprite->frameOrder[0].x = 7;
+    boomerangSprite->frameOrder[0].y = 0;
 
-*/
-    return fireballSprite;
+    return boomerangSprite;
 }
 
-void _spawnProjectile(engine_t* self) {
+sprite_t* _createCoinSprite(engine_t* self) {
+    sprite_t* coinSprite = spriteAllocateSpriteSheet("res/gfx/coin.png",30,30,6,25,self->renderer);
+    // 0 
+    coinSprite->frameOrder[7].x = 0;
+    coinSprite->frameOrder[7].y = 0;
+    // 1
+    coinSprite->frameOrder[6].x = 1;
+    coinSprite->frameOrder[6].y = 0;
+    // 2
+    coinSprite->frameOrder[5].x = 2;
+    coinSprite->frameOrder[5].y = 0;
+    // 3
+    coinSprite->frameOrder[4].x = 3;
+    coinSprite->frameOrder[4].y = 0;
+    // 4
+    coinSprite->frameOrder[3].x = 4;
+    coinSprite->frameOrder[3].y = 0;
+    // 5 
+    coinSprite->frameOrder[2].x = 5;
+    coinSprite->frameOrder[2].y = 0;
+
+    return coinSprite;
+}
+
+void _spawnBoomerang(engine_t* self) {
     // Has enough time passed
     if (SDL_GetTicks() < self->lastProjectile + self->projectileDelay) {
         return;
@@ -636,16 +761,42 @@ void _spawnProjectile(engine_t* self) {
     // New Projectile
     for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
-            sprite_t* fireballSprite = _createFireballSprite(self);
-            projectile_t *fireball = projectileAllocate(fireballSprite);
-            fireball->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
-            fireball->position.y = 
+            sprite_t* boomerangSprite = _createBoomerangSprite(self);
+            projectile_t *boomerang = projectileAllocate(boomerangSprite);
+            boomerang->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
+            boomerang->position.y = 
                 self->player->position.y + (self->player->sprite->dimensions.y/2) -
-                fireballSprite->tileDimensions.y/2;
-            fireball->velocity.x = DEFAULT_PROJECTILE_VELOCITY_X;
-            fireball->velocity.y = DEFAULT_PROJECTILE_VELOCITY_Y;
-            self->projectiles[projIndex] = fireball;
+                boomerangSprite->tileDimensions.y/2;
+            boomerang->velocity.x = DEFAULT_PROJECTILE_VELOCITY_X;
+            boomerang->velocity.y = DEFAULT_PROJECTILE_VELOCITY_Y;
+            self->projectiles[projIndex] = boomerang;
             self->lastProjectile = SDL_GetTicks();
+            boomerang->type = PROJ_TYPE_BOOMERANG; 
+            sfxPlay(self->sfx[0]);
+            break;
+        }
+    }
+}
+
+void _spawnPunch(engine_t* self) {
+    // Has enough time passed
+    if (SDL_GetTicks() < self->lastProjectile + self->projectileDelay) {
+        return;
+    }
+    // New Projectile
+    for (int projIndex = 0; projIndex < MAX_PROJECTILES; projIndex++) {
+        if (self->projectiles[projIndex] == NULL) {
+            sprite_t* fistSprite = spriteAllocate("res/gfx/fist.png",self->renderer);
+            projectile_t *fist = projectileAllocate(fistSprite);
+            fist->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
+            fist->position.y = 
+                self->player->position.y + (self->player->sprite->dimensions.y/2) -
+                fistSprite->tileDimensions.y/2;
+            fist->velocity.x = DEFAULT_PROJECTILE_VELOCITY_X;
+            fist->velocity.y = DEFAULT_PROJECTILE_VELOCITY_Y;
+            self->projectiles[projIndex] = fist;
+            self->lastProjectile = SDL_GetTicks();
+            fist->type = PROJ_TYPE_PUNCH; 
             sfxPlay(self->sfx[0]);
             break;
         }
@@ -655,6 +806,7 @@ void _spawnProjectile(engine_t* self) {
 
 void _renderScore(engine_t* self) {
     if (self->score != NULL) {
+        snprintf(self->score->text,self->score->bufferSize, "Score: %.6d",self->player->score);
         SDL_Surface *surface = TTF_RenderText_Solid(self->score->font,self->score->text,self->score->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
@@ -664,8 +816,8 @@ void _renderScore(engine_t* self) {
         int iW, iH;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest;
-        dest.x = self->score->position.x;
-        dest.y = self->score->position.y;
+        dest.x = 5;
+        dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);

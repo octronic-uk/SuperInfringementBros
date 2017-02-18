@@ -8,6 +8,7 @@ typedef struct {
     sprite_t  *sprite;
     vector2i_t position;
     vector2f_t velocity;
+    vector2f_t velocityDecay;
     int health;
     path_t *path;
 } enemy_t;

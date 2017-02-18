@@ -14,6 +14,9 @@ enemy_t* enemyAllocate(sprite_t* sprite, path_t* path) {
     enemy->velocity.x = 0.0f;
     enemy->velocity.y = 0.0f;
 
+    enemy->velocityDecay.x = 0.0f;
+    enemy->velocityDecay.y = 0.0f;
+
     enemy->health = 0;
 
     return enemy;

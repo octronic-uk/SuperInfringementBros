@@ -72,8 +72,12 @@ int engineGetProjectileIndex(engine_t* self, projectile_t* projectile);
 
 // Setup/Init
 int       _setupResources(engine_t* self);
-sprite_t* _createFireballSprite(engine_t* engine);
-void      _spawnProjectile(engine_t* self);
+sprite_t* _createBoomerangSprite(engine_t* engine);
+sprite_t* _createCoinSprite(engine_t* engine);
+sprite_t* _createExplosionSprite(engine_t* engine);
+
+void      _spawnPunch(engine_t* self);
+void      _spawnBoomerang(engine_t* self);
 
 // Render
 void _renderBackgrounds(engine_t* self);
