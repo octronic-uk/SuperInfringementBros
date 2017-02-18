@@ -4,9 +4,9 @@
 #include "vector.h"
 #include "sprite.h"
 
-#define DEFAULT_PROJECTILE_VELOCITY_X 0.5f
+#define DEFAULT_PROJECTILE_VELOCITY_X 1.0f
 #define DEFAULT_PROJECTILE_VELOCITY_Y 0.0f
-#define DEFAULT_PROJECTILE_DELAY     125.0f
+#define DEFAULT_PROJECTILE_DELAY     100.0f
 
 typedef struct {
     sprite_t* sprite;

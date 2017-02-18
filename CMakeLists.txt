@@ -1,6 +1,8 @@
 project(SuperInfringementBros C)
 cmake_minimum_required(VERSION 3.0)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 SET(CMAKE_MODULE_PATH "${SuperInfringementBros_SOURCE_DIR}/CMakeModules")
 message("Using modules path: " ${CMAKE_MODULE_PATH})
 
@@ -9,6 +11,7 @@ aux_source_directory(src SRC_LIST)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 find_package(SDL2_mixer REQUIRED)
+find_package(SDL2_ttf REQUIRED)
 
 set(BIN_NAME SuperInfringementBros)
 
@@ -16,6 +19,7 @@ include_directories(
     ${SDL2_INCLUDE_DIR}
     ${SDL2_IMAGE_INCLUDE_DIR}
     ${SDLMIXER_INCLUDE_DIR}
+    ${SDL2_TTF_INCLUDE_DIR}
 ) 
 
 add_executable(
@@ -29,6 +33,7 @@ target_link_libraries(
     ${SDL2_LIBRARIES}
     ${SDL2_IMAGE_LIBRARY}
     ${SDLMIXER_LIBRARY}
+    ${SDL2_TTF_LIBRARY}
 )
 
 # Copy Resources

@@ -3,11 +3,14 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_Mixer.h>
+#include <SDL2/SDL_ttf.h>
 #include "background.h"
 #include "player.h"
 #include "projectile.h"
 #include "sfx.h"
+#include "music.h"
 #include "enemy.h"
+#include "text.h"
 
 #define ENGINE_ERROR -1
 #define ENGINE_OK     0
@@ -39,9 +42,11 @@ struct engine {
     // Engine things
     player_t      *player;
     projectile_t **projectiles;
+    music_t       *bgm;
     sfx_t        **sfx;
     background_t **backgrounds;
     enemy_t      **enemies;
+    text_t       *score;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;
@@ -61,11 +66,28 @@ int  engineLoop(engine_t* self);
 int  engineDefaultInputHandler(engine_t* self);
 int  engineDefaultUpdateHandler(engine_t* self);
 int  engineDefaultRenderHandler(engine_t* self);
-
+int engineGetProjectileIndex(engine_t* self, projectile_t* projectile);
 
 // 'Private' Functions 
+
+// Setup/Init
 int       _setupResources(engine_t* self);
 sprite_t* _createFireballSprite(engine_t* engine);
 void      _spawnProjectile(engine_t* self);
+
+// Render
+void _renderBackgrounds(engine_t* self);
+void _renderPlayer(engine_t* self);
+void _renderEnemies(engine_t* self);
+void _renderProjectiles(engine_t* self);
+void _renderScore(engine_t* self);
+
+// Update 
+void _updateBackgrounds(engine_t* self);
+void _updatePlayer(engine_t* self);
+void _updateEnemies(engine_t* self);
+void _updateProjectiles(engine_t* self);
+
+projectile_t** _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
 
 #endif // ENGINE_H
