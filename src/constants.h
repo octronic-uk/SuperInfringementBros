@@ -5,6 +5,7 @@
 #define ENEMY_STATE_DEAD 2
 #define ENEMY_STATE_MOVE 3
 #define ENEMY_PROJECTILE_DELAY 2500.0f
+#define ENEMY_DEFAULT_VELOCITY -0.1
 
 #define SFX_SHOOT       0
 #define SFX_PUNCH_1     1
@@ -12,6 +13,8 @@
 #define SFX_BOING       3
 #define SFX_EXPLOSION_1 4
 #define SFX_EXPLOSION_2 5
+
+#define VFX_TYPE_ENEMY_EXPLOSION 1
 
 #define ENGINE_ERROR          -1
 #define ENGINE_OK              0
@@ -21,6 +24,7 @@
 #define ENGINE_MAX_PROJECTILES 100
 #define ENGINE_MAX_ENEMIES     50
 #define ENGINE_MAX_VFX         100
+#define ENGINE_MAX_COLLECTABLES 100
 
 #define PLAYER_DEFAULT_SPEED 0.5f
 
@@ -33,5 +37,7 @@
 #define PROJECTILE_TYPE_BULLET       3 
 #define PROJECTILE_TYPE_ENEMY_ROCKET 4
 
+#define ENGINE_MAX_COLLECTABLES 100
+#define COLLECTABLE_TYPE_COIN 1
 
 #endif // CONSTANTS_H

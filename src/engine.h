@@ -12,6 +12,7 @@
 #include "enemy.h"
 #include "text.h"
 #include "vfx.h"
+#include "collectable.h"
 
 typedef struct engine engine_t;
 
@@ -32,14 +33,15 @@ struct engine {
     int (*renderFunction)(engine_t*);
     int (*updateFunction)(engine_t*);
     // Engine things
-    player_t      *player;
-    background_t **backgrounds;
-    sfx_t        **sfx;
-    projectile_t **projectiles;
-    enemy_t      **enemies;
-    vfx_t        **vfx;
-    music_t       *bgm;
-    text_t       *score;
+    player_t       *player;
+    background_t  **backgrounds;
+    sfx_t         **sfx;
+    projectile_t  **projectiles;
+    enemy_t       **enemies;
+    vfx_t         **vfx;
+    music_t        *bgm;
+    text_t         *score;
+    collectable_t **collectables;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;
@@ -59,7 +61,7 @@ int  engineLoop(engine_t* self);
 int  engineDefaultInputHandler(engine_t* self);
 int  engineDefaultUpdateHandler(engine_t* self);
 int  engineDefaultRenderHandler(engine_t* self);
-int engineGetProjectileIndex(engine_t* self, projectile_t* projectile);
+int  engineGetProjectileIndex(engine_t* self, projectile_t* projectile);
 
 // 'Private' Functions 
 
@@ -70,12 +72,12 @@ sprite_t* _createBoomerangSprite(engine_t* engine);
 sprite_t* _createEnemyRocketSprite(engine_t* engine);
 sprite_t* _createCoinSprite(engine_t* engine);
 sprite_t* _createExplosionSprite(engine_t* engine);
-
 enemy_t*  _createEnemy(engine_t* engine, int numEnemies, int i);
 
 void _createPunchProjectile(engine_t* self);
 void _createBoomerangProjectile(engine_t* self);
 void _createEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
+void _createCoinCollectable(engine_t *self, vector2i_t pos);
 
 void _explodeEnemy(engine_t* self, enemy_t* enemy);
 
@@ -86,6 +88,7 @@ void _renderEnemies(engine_t* self);
 void _renderProjectiles(engine_t* self);
 void _renderScore(engine_t* self);
 void _renderVfx(engine_t *self);
+void _renderCollectables(engine_t* self);
 
 // Update 
 void _updateBackgrounds(engine_t* self);
@@ -93,6 +96,7 @@ void _updatePlayer(engine_t* self);
 void _updateEnemies(engine_t* self);
 void _updateProjectiles(engine_t* self);
 void _updateVfx(engine_t* self);
+void _updateCollectables(engine_t *self);
 
 projectile_t** _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
 
