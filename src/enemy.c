@@ -1,6 +1,6 @@
 #include "enemy.h"
+#include "constants.h"
 #include <stdio.h>
-
 
 enemy_t* enemyAllocate(sprite_t* sprite, path_t* path) {
     printf("Allocating enemy_t\n");
@@ -18,6 +18,8 @@ enemy_t* enemyAllocate(sprite_t* sprite, path_t* path) {
     enemy->velocityDecay.y = 0.0f;
 
     enemy->health = 0;
+    enemy->lastProjectile = 0.0f;
+    enemy->projectileDelay = ENEMY_PROJECTILE_DELAY;
 
     return enemy;
 }

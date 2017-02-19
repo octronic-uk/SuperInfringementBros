@@ -1,0 +1,37 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#define ENEMY_STATE_PATH 1
+#define ENEMY_STATE_DEAD 2
+#define ENEMY_STATE_MOVE 3
+#define ENEMY_PROJECTILE_DELAY 2500.0f
+
+#define SFX_SHOOT       0
+#define SFX_PUNCH_1     1
+#define SFX_PUNCH_2     2
+#define SFX_BOING       3
+#define SFX_EXPLOSION_1 4
+#define SFX_EXPLOSION_2 5
+
+#define ENGINE_ERROR          -1
+#define ENGINE_OK              0
+#define ENGINE_QUIT            1
+#define ENGINE_MAX_BACKGROUNDS 5 
+#define ENGINE_MAX_SFX         10
+#define ENGINE_MAX_PROJECTILES 100
+#define ENGINE_MAX_ENEMIES     50
+#define ENGINE_MAX_VFX         100
+
+#define PLAYER_DEFAULT_SPEED 0.5f
+
+#define PROJECTILE_DEFAULT_VELOCITY_X 1.0f
+#define PROJECTILE_DEFAULT_VELOCITY_Y 0.0f
+#define PROJECTILE_DEFAULT_DELAY     100.0f
+
+#define PROJECTILE_TYPE_PUNCH        1
+#define PROJECTILE_TYPE_BOOMERANG    2 
+#define PROJECTILE_TYPE_BULLET       3 
+#define PROJECTILE_TYPE_ENEMY_ROCKET 4
+
+
+#endif // CONSTANTS_H

@@ -5,12 +5,15 @@
 #include "path.h"
 
 typedef struct {
+    char       state;
     sprite_t  *sprite;
     vector2i_t position;
     vector2f_t velocity;
     vector2f_t velocityDecay;
     int health;
     path_t *path;
+    float projectileDelay;
+    float lastProjectile;
 } enemy_t;
 
 enemy_t* enemyAllocate(sprite_t* sprite, path_t* path);

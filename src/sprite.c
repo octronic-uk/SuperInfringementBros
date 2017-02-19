@@ -18,6 +18,7 @@ sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
     s->frameOrder = NULL; 
     s->frameDuration = 0;
     s->frameDurationRemaining = 0;
+    s->repeat = 0;
     return s;
 }
 
@@ -91,4 +92,15 @@ SDL_Rect *spriteGetCurrentFrameRect(sprite_t* self) {
     frameRect->x = self->frameOrder[self->currentFrame].x*self->tileDimensions.x;
     frameRect->y = self->frameOrder[self->currentFrame].y*self->tileDimensions.y;
     return frameRect;
+}
+
+
+char spriteAnimationFinished(sprite_t* self) {
+    if (self->repeat == 1) {
+        return 0;
+    }    
+
+    printf("Animation frame:%d/%d, durationRemaining:%d\n",self->currentFrame,self->numFrames,self->frameDurationRemaining);
+    return self->currentFrame == self->numFrames-1 && // On last Frame
+           self->frameDurationRemaining <= 0;        // Finished showing frame
 }

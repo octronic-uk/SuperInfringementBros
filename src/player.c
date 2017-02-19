@@ -1,6 +1,7 @@
 #include "player.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "constants.h"
 
 player_t* playerAllocate(sprite_t* sprite) {
     printf("Allocating new player_t\n"); 
@@ -12,7 +13,7 @@ player_t* playerAllocate(sprite_t* sprite) {
     p->health = 0;
     p->score  = 0;
     p->sprite = sprite;
-    p->speed = DEFAULT_PLAYER_SPEED;
+    p->speed = PLAYER_DEFAULT_SPEED;
     return p;
 }
 

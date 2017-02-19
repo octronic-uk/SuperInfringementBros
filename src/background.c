@@ -1,7 +1,6 @@
 #include "background.h"
 #include <stdio.h>
 
-
 background_t* backgroundAllocate(char* path, SDL_Renderer *renderer) {
 
     if (renderer == NULL) {

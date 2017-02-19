@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include "engine.h"
+#include "constants.h"
 
  int main(int argc, char** argv) {
     int retval = 0;

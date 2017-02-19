@@ -14,6 +14,7 @@ typedef struct {
     int frameDuration;
     int frameDurationRemaining;
     vector2i_t *frameOrder;
+    char repeat;
 } sprite_t;
 
 sprite_t* spriteAllocate(char* path,SDL_Renderer* renderer);
@@ -26,5 +27,6 @@ sprite_t* spriteAllocateSpriteSheet(
 void spriteDestroy(sprite_t* self);
 void spriteAdvanceFrame(sprite_t* self, float timeDelta);
 SDL_Rect *spriteGetCurrentFrameRect(sprite_t* self);
+char spriteAnimationFinished(sprite_t* self);
 
 #endif // SPRITE_H
