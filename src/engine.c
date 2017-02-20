@@ -43,6 +43,8 @@ engine_t* engineAllocate() {
         engine->collectables[cIndex] = NULL;
     }
 
+    engine->coinSprite = NULL;
+
     // Init Variables
     engine->currentTime = 0.0f;
     engine->lastTime    = 0.0f;
@@ -209,10 +211,21 @@ void engineDestroy(engine_t* self) {
             self->bgm = NULL;
         }
         // Destroy Score Text
-        if (self->score != NULL) {
-            textDestroy(self->score);
-            self->score = NULL;
+        if (self->scoreText != NULL) {
+            textDestroy(self->scoreText);
+            self->scoreText = NULL;
         }
+        // Destroy Coin Text
+        if (self->coinsText != NULL) {
+            textDestroy(self->coinsText);
+            self->coinsText = NULL;
+        }
+        // Destroy Coin Sprite
+        if (self->coinSprite != NULL) {
+            spriteDestroy(self->coinSprite);
+            self->coinSprite = NULL;
+        } 
+        free(self);
     }
     TTF_Quit();
     Mix_CloseAudio();
@@ -353,7 +366,7 @@ int engineDefaultRenderHandler(engine_t* self) {
     _renderProjectiles(self);
     _renderVfx(self);
     _renderCollectables(self);
-    _renderScore(self);
+    _renderHUD(self);
     SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
 }  
@@ -482,15 +495,34 @@ void _updateVfx(engine_t* self) {
 }
 
 void _updateCollectables(engine_t* self) {
+
+    vector2i_t pPosition   = self->player->position;
+    vector2i_t pDimensions = self->player->sprite->tileDimensions;
+
     for (int cIndex=0; cIndex<ENGINE_MAX_COLLECTABLES; cIndex++) {
-        collectable_t *nextCollectable = self->collectables[cIndex];
-        if (nextCollectable == NULL) {
+        collectable_t *nextCol = self->collectables[cIndex];
+        if (nextCol == NULL) {
             continue;
         }
+
+        vector2i_t cPosition   = nextCol->position;
+        vector2i_t cDimensions = nextCol->sprite->tileDimensions;
+        
+        switch (nextCol->type) {
+            case COLLECTABLE_TYPE_COIN:
+                if (vector2iCollision(cPosition, cDimensions, pPosition, pDimensions) == 1) {
+                    collectableDestroy(nextCol);
+                    self->collectables[cIndex] = NULL;
+                    sfxPlay(self->sfx[SFX_COIN_GET]);
+                    self->player->coins++;
+                    continue;
+                }
+                break;
+        } 
+
         // Update position
-        nextCollectable->position.x += nextCollectable->velocity.x;
-        nextCollectable->position.y += nextCollectable->velocity.y;
-        // Check for collision
+        nextCol->position.x += nextCol->velocity.x;
+        nextCol->position.y += nextCol->velocity.y;
     }
 }
 
@@ -719,10 +751,45 @@ void _renderProjectiles(engine_t* self) {
     }
 }
 
+void _renderHUD(engine_t* self) {
+    _renderScore(self);
+    _renderCoinCount(self);
+}
+
+void _renderCoinCount(engine_t* self) {
+    if (self->coinsText != NULL) {
+        // Text
+        snprintf(self->coinsText->text, self->coinsText->bufferSize, "%.3d",self->player->coins);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, self->coinsText->colour);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            printf("Error: Could not create coins text texture\n");
+            return;
+        }
+        int iW, iH;
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        SDL_Rect dest, *src;
+        dest.x = (self->screenWidth/2)-(iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+        // Sprite
+        src = spriteGetCurrentFrameRect(self->coinSprite);
+        dest.w = self->coinSprite->tileDimensions.x;
+        dest.h = self->coinSprite->tileDimensions.y;
+        dest.x = dest.x - self->coinSprite->tileDimensions.x-5;
+        dest.y = self->screenHeight-iH-5;
+        SDL_RenderCopy(self->renderer, self->coinSprite->texture, src, &dest);
+    }
+}
+
 void _renderScore(engine_t* self) {
-    if (self->score != NULL) {
-        snprintf(self->score->text,self->score->bufferSize, "Score: %.6d",self->player->score);
-        SDL_Surface *surface = TTF_RenderText_Solid(self->score->font,self->score->text,self->score->colour);
+    if (self->scoreText != NULL) {
+        snprintf(self->scoreText->text,self->scoreText->bufferSize, "Score: %.6d",self->player->score);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
             printf("Error: Could not create score texture\n");
@@ -837,6 +904,7 @@ int _setupResources(engine_t* engine) {
     engine->sfx[SFX_BOING      ] = sfxAllocate("res/sfx/boing.wav",       0);
     engine->sfx[SFX_EXPLOSION_1] = sfxAllocate("res/sfx/explosion_1.wav", 0);
     engine->sfx[SFX_EXPLOSION_2] = sfxAllocate("res/sfx/explosion_2.wav", 0);
+    engine->sfx[SFX_COIN_GET   ] = sfxAllocate("res/sfx/coin.wav", 0);
     // Setup Enemies
     int numEnemies = 10;
     for (int i=0; i< numEnemies; i++) {
@@ -845,8 +913,10 @@ int _setupResources(engine_t* engine) {
     // Load BGM
     engine->bgm = musicAllocate("res/bgm/japanism.wav",-1);
     musicPlay(engine->bgm);
-    // Setup Score Font
-    engine->score = textAllocate("res/fonts/blocked.ttf",32,50);
+    // HUD Elements
+    engine->scoreText  = textAllocate("res/fonts/blocked.ttf",32,20);
+    engine->coinsText  = textAllocate("res/fonts/blocked.ttf",32,10);
+    engine->coinSprite = spriteAllocate("res/gfx/coin_single.png",engine->renderer);
     // Done
     return ENGINE_OK;
 }

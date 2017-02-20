@@ -40,8 +40,10 @@ struct engine {
     enemy_t       **enemies;
     vfx_t         **vfx;
     music_t        *bgm;
-    text_t         *score;
+    text_t         *scoreText;
+    text_t         *coinsText;
     collectable_t **collectables;
+    sprite_t       *coinSprite;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;
@@ -86,10 +88,12 @@ void _renderBackgrounds(engine_t* self);
 void _renderPlayer(engine_t* self);
 void _renderEnemies(engine_t* self);
 void _renderProjectiles(engine_t* self);
-void _renderScore(engine_t* self);
 void _renderVfx(engine_t *self);
 void _renderCollectables(engine_t* self);
 
+void _renderHUD(engine_t *self);
+void _renderScore(engine_t* self);
+void _renderCoinCount(engine_t* self);
 // Update 
 void _updateBackgrounds(engine_t* self);
 void _updatePlayer(engine_t* self);
@@ -98,6 +102,6 @@ void _updateProjectiles(engine_t* self);
 void _updateVfx(engine_t* self);
 void _updateCollectables(engine_t *self);
 
-projectile_t** _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
+projectile_t**  _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
 
 #endif // ENGINE_H

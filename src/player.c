@@ -14,6 +14,7 @@ player_t* playerAllocate(sprite_t* sprite) {
     p->score  = 0;
     p->sprite = sprite;
     p->speed = PLAYER_DEFAULT_SPEED;
+    p->coins = 0;
     return p;
 }
 
