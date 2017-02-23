@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define ENGINE_NUM_HUD_ELEMENTS 4
+
 #define ENGINE_MAX_ENEMIES      50
 #define ENEMY_STATE_PATH        1
 #define ENEMY_STATE_DEAD        2
@@ -25,7 +27,7 @@
 #define ENGINE_QUIT            1
 #define ENGINE_MAX_BACKGROUNDS 5 
 
-#define PLAYER_DEFAULT_SPEED 0.5f
+#define PLAYER_DEFAULT_SPEED 0.3f
 
 #define ENGINE_MAX_PROJECTILES        100
 #define PROJECTILE_DEFAULT_VELOCITY_X 1.0f

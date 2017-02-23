@@ -42,68 +42,96 @@ engine_t* engineAllocate() {
     for (int cIndex=0; cIndex<ENGINE_MAX_COLLECTABLES; cIndex++) {
         engine->collectables[cIndex] = NULL;
     }
+    // Screen Attributes
+    engine->screenTitle  = NULL;
+    engine->screenWidth  = -1;
+    engine->screenHeight = -1;
 
-    engine->coinSprite = NULL;
+    // HUD Elements
+    engine->scoreText    = NULL;
+    engine->coinSprite   = NULL;
+    engine->coinsText    = NULL;
+    engine->punchSprite  = NULL;
+    engine->punchText    = NULL;
+    engine->healthSprite = NULL;
+    engine->healthText   = NULL;
 
     // Init Variables
-    engine->currentTime = 0.0f;
-    engine->lastTime    = 0.0f;
-    engine->deltaTime   = 0.0f;;
-
-    engine->window   = NULL;
-    engine->renderer = NULL;
-
+    engine->currentTime    = 0.0f;
+    engine->lastTime       = 0.0f;
+    engine->deltaTime      = 0.0f;;
+    engine->window         = NULL;
+    engine->renderer       = NULL;
     engine->inputFunction  = NULL;
     engine->updateFunction = NULL;
     engine->renderFunction = NULL;
 
-    engine->upPressed    = 0;
-    engine->downPressed  = 0;
-    engine->leftPressed  = 0;
-    engine->rightPressed = 0;
-    engine->aBtnPressed  = 0;
-    engine->bBtnPressed  = 0;
-
+    // Event variables
+    engine->upPressed        = 0;
+    engine->downPressed      = 0;
+    engine->leftPressed      = 0;
+    engine->rightPressed     = 0;
+    engine->fire1BtnPressed  = 0;
+    engine->fire2BtnPressed  = 0;
+    engine->buyBtnPressed    = 0;
+    engine->weaponBtnPressed = 0;
     engine->lastProjectile = 0.0f;
+
+    // Misc
     engine->projectileDelay = PROJECTILE_DEFAULT_DELAY;
 
     return engine;
 }
 
 int engineInit(engine_t* self, int width, int height, char* title) {
-    self->screenWidth = width;
-    self->screenHeight = height;
-
-    if (self == NULL) {
+   if (self == NULL) {
         printf("Engine: Error, engine_t must be allocated before initialisation.\n");
-        return 1;
+        return ENGINE_ERROR;
     }
 
+    self->screenWidth  = width;
+    self->screenHeight = height;
+    self->screenTitle  = title;
+
+    if (engineInitSDL(self) != ENGINE_OK) {
+        printf("Error during SDL init\n");
+        return ENGINE_ERROR;
+    }
+
+    if (_setupResources(self) != ENGINE_OK) {
+        printf("Error during resource setup\n");
+        return ENGINE_ERROR;
+    }
+
+    return ENGINE_OK;
+}
+
+int engineInitSDL(engine_t* self) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
         printf("Engine: SDL_Init Error = %s\n" , SDL_GetError());
-        return 1;
+        return ENGINE_ERROR;
     }
     if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
         printf("Engine: failed to init SDL image %s\n",IMG_GetError());
-        return 1;
+        return ENGINE_ERROR;
     }
 
     if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024)==-1) {
         printf("Mix_OpenAudio: %s\n", Mix_GetError());
-        return 1;
+        return ENGINE_ERROR;
     }
 
     if(TTF_Init()==-1) {
         printf("TTF_Init: %s\n", TTF_GetError());
-        return 1;
+        return ENGINE_ERROR;
     }
 
-    self->window = SDL_CreateWindow(title, 0, 0, width, height, SDL_WINDOW_SHOWN);
+    self->window = SDL_CreateWindow(self->screenTitle, 0, 0, self->screenWidth, self->screenHeight, SDL_WINDOW_SHOWN);
 
     if (self->window == NULL) {
         printf("Engine: SDL_CreateWindow Error: %s\n",SDL_GetError());
         SDL_Quit();
-        return 1;
+        return ENGINE_ERROR;
     }
 
     self->renderer = SDL_CreateRenderer(self->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -112,121 +140,150 @@ int engineInit(engine_t* self, int width, int height, char* title) {
         SDL_DestroyWindow(self->window);
         printf("SDL_CreateRenderer Error: %s\n",SDL_GetError());
         SDL_Quit();
-        return 1;
-    }
-
-    if (_setupResources(self) != ENGINE_OK) {
-        printf("Error during resource setup\n");
         return ENGINE_ERROR;
     }
+    return ENGINE_OK;
+}
 
-    return 0;
+void engineDestroySDL(engine_t* self) {
+    // Delete SDL Objects
+    if (self->renderer != NULL) {
+        SDL_DestroyRenderer(self->renderer);
+    }
+    if (self->window != NULL) {
+        SDL_DestroyWindow(self->window);
+    }
+}
+
+void engineDestroyResources(engine_t* self) {
+    // Delete player
+    if (self->player != NULL) {
+        playerDestroy(self->player);
+        self->player = NULL;
+    }
+    // Delete all backgrounds
+    if (self->backgrounds != NULL) {
+        for (int bgIndex = 0; bgIndex < ENGINE_MAX_BACKGROUNDS; bgIndex++) {
+            if (self->backgrounds[bgIndex] != NULL) {
+                backgroundDestroy(self->backgrounds[bgIndex]);
+                self->backgrounds[bgIndex] = NULL;
+            }
+        }
+        free(self->backgrounds);
+        self->backgrounds = NULL;
+    }
+    // Delete all sfx
+    if (self->sfx != NULL) {
+        for (int sIndex=0;sIndex<ENGINE_MAX_SFX;sIndex++) {
+            if (self->sfx[sIndex] != NULL) {
+                sfxDestroy(self->sfx[sIndex]);
+                self->sfx[sIndex] = NULL;
+            }
+        }
+        free(self->sfx);
+        self->sfx = NULL;
+    }
+    // Delete all projectiles
+    if (self->projectiles != NULL) {
+        for (int pIndex=0;pIndex<ENGINE_MAX_PROJECTILES;pIndex++) {
+            if (self->projectiles[pIndex] != NULL) {
+                projectileDestroy(self->projectiles[pIndex]);
+                self->projectiles[pIndex] = NULL;
+            }
+        }
+        free(self->projectiles);
+        self->projectiles = NULL;
+    }
+    // Delete all enemies 
+    if (self->enemies != NULL) {
+        for (int eIndex=0; eIndex<ENGINE_MAX_ENEMIES; eIndex++) {
+            if (self->enemies[eIndex] != NULL) {
+                enemyDestroy(self->enemies[eIndex]);
+                self->enemies[eIndex] = NULL;
+            }
+        }
+        free(self->enemies);
+        self->enemies = NULL;
+    }
+    // Delete all vfx
+    if (self->vfx != NULL) {
+        for (int vIndex=0; vIndex<ENGINE_MAX_VFX; vIndex++) {
+            if (self->vfx[vIndex] != NULL) {
+                vfxDestroy(self->vfx[vIndex]);
+                self->vfx[vIndex] = NULL;
+            }
+        }
+        free(self->vfx);
+        self->vfx = NULL;
+    }
+    // Destroy all collectables
+    if (self->collectables != NULL) {
+        for (int cIndex=0; cIndex < ENGINE_MAX_COLLECTABLES; cIndex++) {
+            if (self->collectables[cIndex] != NULL) {
+                collectableDestroy(self->collectables[cIndex]);
+                self->collectables[cIndex] = NULL;
+            }
+        } 
+        free(self->collectables);
+        self->collectables = NULL;
+    }
+    // Delete BGM Music
+    if (self->bgm != NULL) {
+        musicDestroy(self->bgm);
+        self->bgm = NULL;
+    }
+
+    // Destroy Score Text
+    if (self->scoreText != NULL) {
+        textDestroy(self->scoreText);
+        self->scoreText = NULL;
+    }
+
+    // Destroy Health Text
+    if (self->healthText != NULL) {
+        textDestroy(self->healthText);
+        self->healthText = NULL;
+    }
+    // Destroy Health Sprite
+    if (self->healthSprite != NULL) {
+        spriteDestroy(self->healthSprite);
+        self->healthSprite = NULL;
+    }
+
+    // Destroy Coin Text
+    if (self->coinsText != NULL) {
+        textDestroy(self->coinsText);
+        self->coinsText = NULL;
+    }
+    // Destroy Coin Sprite
+    if (self->coinSprite != NULL) {
+        spriteDestroy(self->coinSprite);
+        self->coinSprite = NULL;
+    } 
+
+    // Destroy Punch Text
+    if (self->punchText != NULL) {
+        textDestroy(self->punchText);
+        self->punchText = NULL;
+    }
+    // Destroy Punch Sprite
+    if (self->punchSprite != NULL) {
+        spriteDestroy(self->punchSprite);
+        self->punchSprite = NULL;
+    }
 }
 
 void engineDestroy(engine_t* self) {
     printf("Destroying engine_t\n");
     if (self != NULL) {
-        // Delete SDL Objects
-        if (self->renderer != NULL) {
-            SDL_DestroyRenderer(self->renderer);
-        }
-        if (self->window != NULL) {
-            SDL_DestroyWindow(self->window);
-        }
-
-        // Delete player
-        if (self->player != NULL) {
-            playerDestroy(self->player);
-            self->player = NULL;
-        }
-        // Delete all backgrounds
-        if (self->backgrounds != NULL) {
-            for (int bgIndex = 0; bgIndex < ENGINE_MAX_BACKGROUNDS; bgIndex++) {
-                if (self->backgrounds[bgIndex] != NULL) {
-                    backgroundDestroy(self->backgrounds[bgIndex]);
-                    self->backgrounds[bgIndex] = NULL;
-                }
-            }
-            free(self->backgrounds);
-            self->backgrounds = NULL;
-        }
-        // Delete all sfx
-        if (self->sfx != NULL) {
-            for (int sIndex=0;sIndex<ENGINE_MAX_SFX;sIndex++) {
-                if (self->sfx[sIndex] != NULL) {
-                    sfxDestroy(self->sfx[sIndex]);
-                    self->sfx[sIndex] = NULL;
-                }
-            }
-            free(self->sfx);
-            self->sfx = NULL;
-        }
-        // Delete all projectiles
-        if (self->projectiles != NULL) {
-            for (int pIndex=0;pIndex<ENGINE_MAX_PROJECTILES;pIndex++) {
-                if (self->projectiles[pIndex] != NULL) {
-                    projectileDestroy(self->projectiles[pIndex]);
-                    self->projectiles[pIndex] = NULL;
-                }
-            }
-            free(self->projectiles);
-            self->projectiles = NULL;
-        }
-        // Delete all enemies 
-        if (self->enemies != NULL) {
-            for (int eIndex=0; eIndex<ENGINE_MAX_ENEMIES; eIndex++) {
-                if (self->enemies[eIndex] != NULL) {
-                    enemyDestroy(self->enemies[eIndex]);
-                    self->enemies[eIndex] = NULL;
-                }
-            }
-            free(self->enemies);
-            self->enemies = NULL;
-        }
-        // Delete all vfx
-        if (self->vfx != NULL) {
-            for (int vIndex=0; vIndex<ENGINE_MAX_VFX; vIndex++) {
-                if (self->vfx[vIndex] != NULL) {
-                    vfxDestroy(self->vfx[vIndex]);
-                    self->vfx[vIndex] = NULL;
-                }
-            }
-            free(self->vfx);
-            self->vfx = NULL;
-        }
-        // Destroy all collectables
-        if (self->collectables != NULL) {
-            for (int cIndex=0; cIndex < ENGINE_MAX_COLLECTABLES; cIndex++) {
-                if (self->collectables[cIndex] != NULL) {
-                    collectableDestroy(self->collectables[cIndex]);
-                    self->collectables[cIndex] = NULL;
-                }
-            } 
-            free(self->collectables);
-            self->collectables = NULL;
-        }
-        // Delete BGM Music
-        if (self->bgm != NULL) {
-            musicDestroy(self->bgm);
-            self->bgm = NULL;
-        }
-        // Destroy Score Text
-        if (self->scoreText != NULL) {
-            textDestroy(self->scoreText);
-            self->scoreText = NULL;
-        }
-        // Destroy Coin Text
-        if (self->coinsText != NULL) {
-            textDestroy(self->coinsText);
-            self->coinsText = NULL;
-        }
-        // Destroy Coin Sprite
-        if (self->coinSprite != NULL) {
-            spriteDestroy(self->coinSprite);
-            self->coinSprite = NULL;
-        } 
+        engineDestroySDL(self);    
+        engineDestroyResources(self);
+        engineCloseSDL(self);
         free(self);
     }
+}
+
+void engineCloseSDL(engine_t *self) {
     TTF_Quit();
     Mix_CloseAudio();
     IMG_Quit();
@@ -279,7 +336,7 @@ int engineDefaultInputHandler(engine_t* self) {
         return ENGINE_QUIT;
     } else if (self->event->type == SDL_KEYDOWN) {
         switch (self->event->key.keysym.sym) {
-            case SDLK_d:
+            case SDLK_q:
                 if (self->debug) {
                     printf("Debug Disabled\n");
                     self->debug = 0;
@@ -288,7 +345,6 @@ int engineDefaultInputHandler(engine_t* self) {
                     self->debug = 1;
                 }
                 break;
-
             case SDLK_UP:
                 self->upPressed = 1;
                 break;
@@ -302,10 +358,16 @@ int engineDefaultInputHandler(engine_t* self) {
                 self->rightPressed = 1;
                 break;
             case SDLK_a:
-                self->aBtnPressed = 1;
+                self->fire1BtnPressed = 1;
                 break;
             case SDLK_s:
-                self->bBtnPressed = 1;
+                self->fire2BtnPressed = 1;
+                break;
+            case SDLK_d:
+                self->weaponBtnPressed = 1;
+                break;
+            case SDLK_f:
+                self->buyBtnPressed = 1;
                 break;
         }
     } else if (self->event->type == SDL_KEYUP) {
@@ -324,10 +386,16 @@ int engineDefaultInputHandler(engine_t* self) {
                 self->rightPressed = 0;
                 break;
             case SDLK_a:
-                self->aBtnPressed = 0;
+                self->fire1BtnPressed = 0;
                 break;
             case SDLK_s:
-                self->bBtnPressed = 0;
+                self->fire2BtnPressed = 0;
+                break;
+            case SDLK_d:
+                self->weaponBtnPressed = 0;
+                break;
+            case SDLK_f:
+                self->buyBtnPressed = 0;
                 break;
         }
     } 
@@ -401,74 +469,99 @@ void _updateBackgrounds(engine_t* self) {
 }
 
 void _updatePlayer(engine_t* self) {
-    // Process Player Motion Input
-    // Set Velocities
-    // X Axis
-    if (self->leftPressed == 1 && self->rightPressed == 1) {
-        self->player->velocity.x = 0.0f;
-    }
-    else if (self->leftPressed == 1 ) { 
-        self->player->velocity.x = -self->player->speed*self->deltaTime;
-    }
-    else if (self->rightPressed == 1) {
-        self->player->velocity.x = self->player->speed*self->deltaTime;
-    }
-    else {
-        self->player->velocity.x = 0.0f;
-    }
-    // Move X
-    if (self->player->velocity.x < 0.0f)  { // Left
-        if (self->player->position.x > 0) {
-            self->player->position.x += self->player->velocity.x;
-        } else {
-            self->player->position.x = 0;
+    // Player exists
+    if (self->player != NULL) {
+        // Check projectile collisions
+        vector2i_t playerPosition = self->player->position;
+        vector2i_t playerDimensions = self->player->sprite->tileDimensions;
+
+        for (int pIndex=0; pIndex<ENGINE_MAX_PROJECTILES; pIndex++) {
+            projectile_t* proj = self->projectiles[pIndex];
+            if (proj==NULL) {
+                continue;
+            }
+            vector2i_t projPosition = proj->position;
+            vector2i_t projDimensions = proj->sprite->tileDimensions;
+            int hasCollided = vector2iCollision(playerPosition,playerDimensions,projPosition,projDimensions);
+            if(hasCollided) {
+                self->player->health -= proj->damage;
+                projectileDestroy(proj);
+                self->projectiles[pIndex] = NULL;
+            }
+        }
+        // Process Player Motion Input
+        // Set Velocities
+        // X Axis
+        if (self->leftPressed == 1 && self->rightPressed == 1) {
             self->player->velocity.x = 0.0f;
         }
-    } 
-    else if (self->player->velocity.x > 0.0f) { // Right
-        if (self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
-            self->player->position.x += self->player->velocity.x;
+        else if (self->leftPressed == 1 ) { 
+            self->player->velocity.x = -self->player->speed*self->deltaTime;
+        }
+        else if (self->rightPressed == 1) {
+            self->player->velocity.x = self->player->speed*self->deltaTime;
         }
         else {
-            self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
             self->player->velocity.x = 0.0f;
         }
-    }
+        // Move X
+        if (self->player->velocity.x < 0.0f)  { // Left
+            if (self->player->position.x > 0) {
+                self->player->position.x += self->player->velocity.x;
+            } else {
+                self->player->position.x = 0;
+                self->player->velocity.x = 0.0f;
+            }
+        } 
+        else if (self->player->velocity.x > 0.0f) { // Right
+            if (self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
+                self->player->position.x += self->player->velocity.x;
+            }
+            else {
+                self->player->position.x = self->screenWidth - self->player->sprite->dimensions.x;
+                self->player->velocity.x = 0.0f;
+            }
+        }
 
-    // Y Axis
-    if (self->upPressed == 1 && self->downPressed == 1) {
-        self->player->velocity.y = 0.0f;
-    }
-    else if (self->upPressed == 1 ) { 
-        self->player->velocity.y = -self->player->speed*self->deltaTime;
-    } else if (self->downPressed == 1){
-        self->player->velocity.y = self->player->speed*self->deltaTime;
-    } else {
-        self->player->velocity.y = 0.0f;
-    }
-    // Move Y
-    if (self->player->velocity.y < 0.0f)  { // Up 
-        if (self->player->position.y > 0) {
-            self->player->position.y += self->player->velocity.y;
+        // Y Axis
+        if (self->upPressed == 1 && self->downPressed == 1) {
+            self->player->velocity.y = 0.0f;
+        }
+        else if (self->upPressed == 1 ) { 
+            self->player->velocity.y = -self->player->speed*self->deltaTime;
+        } else if (self->downPressed == 1){
+            self->player->velocity.y = self->player->speed*self->deltaTime;
         } else {
-            self->player->position.y = 0;
             self->player->velocity.y = 0.0f;
         }
-    } else if (self->player->velocity.y > 0) { // Down
-        if (self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
-            self->player->position.y += self->player->velocity.y;
+        // Move Y
+        if (self->player->velocity.y < 0.0f)  { // Up 
+            if (self->player->position.y > 0) {
+                self->player->position.y += self->player->velocity.y;
+            } else {
+                self->player->position.y = 0;
+                self->player->velocity.y = 0.0f;
+            }
+        } else if (self->player->velocity.y > 0) { // Down
+            if (self->player->position.y < self->screenHeight - self->player->sprite->dimensions.y) {
+                self->player->position.y += self->player->velocity.y;
+            }
+            else {
+                self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
+                self->player->velocity.y = 0.0f;
+            }
         }
-        else {
-            self->player->position.y = self->screenHeight - self->player->sprite->dimensions.y;
-            self->player->velocity.y = 0.0f;
-        }
-    }
 
-    if (self->aBtnPressed == 1) {
-        _createBoomerangProjectile(self);
-    }
-    else if (self->bBtnPressed == 1) {
-        _createPunchProjectile(self);
+        if (self->fire1BtnPressed == 1) {
+            _createBoomerangProjectile(self);
+        }
+        else if (self->fire2BtnPressed == 1) {
+            if (self->player->numPunches > 0) {
+                _createPunchProjectile(self);
+            } else {
+
+            }
+        }
     }
 }
 
@@ -495,7 +588,6 @@ void _updateVfx(engine_t* self) {
 }
 
 void _updateCollectables(engine_t* self) {
-
     vector2i_t pPosition   = self->player->position;
     vector2i_t pDimensions = self->player->sprite->tileDimensions;
 
@@ -507,14 +599,15 @@ void _updateCollectables(engine_t* self) {
 
         vector2i_t cPosition   = nextCol->position;
         vector2i_t cDimensions = nextCol->sprite->tileDimensions;
-        
+
         switch (nextCol->type) {
             case COLLECTABLE_TYPE_COIN:
                 if (vector2iCollision(cPosition, cDimensions, pPosition, pDimensions) == 1) {
                     collectableDestroy(nextCol);
                     self->collectables[cIndex] = NULL;
                     sfxPlay(self->sfx[SFX_COIN_GET]);
-                    self->player->coins++;
+                    self->player->numCoins++;
+                    self->player->score += 100;
                     continue;
                 }
                 break;
@@ -646,7 +739,7 @@ void _updateProjectiles(engine_t* self) {
 }
 
 // RENDER ======================================================================
-//
+
 void _renderBackgrounds(engine_t* self) {
     for (int bgIndex = 0; bgIndex < ENGINE_MAX_BACKGROUNDS; bgIndex++) {
         background_t *nextBg = self->backgrounds[bgIndex];
@@ -752,14 +845,69 @@ void _renderProjectiles(engine_t* self) {
 }
 
 void _renderHUD(engine_t* self) {
-    _renderScore(self);
-    _renderCoinCount(self);
+    _renderScore(self,1);
+    _renderHealth(self,2);
+    _renderCoinCount(self,3);
+    _renderPunchCount(self,4);
 }
 
-void _renderCoinCount(engine_t* self) {
-    if (self->coinsText != NULL) {
+void _renderScore(engine_t* self, int i) {
+    if (self->scoreText != NULL) {
+        snprintf(self->scoreText->text,self->scoreText->bufferSize, "%.6d",self->player->score);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            printf("Error: Could not create score texture\n");
+            return;
+        }
+        int iW, iH;
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        SDL_Rect dest;
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*1) - (iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+    }
+}
+
+void _renderHealth(engine_t* self, int i) {
+    if (self->healthText != NULL && self->healthSprite != NULL) {
         // Text
-        snprintf(self->coinsText->text, self->coinsText->bufferSize, "%.3d",self->player->coins);
+        snprintf(self->healthText->text, self->healthText->bufferSize, "%.3d",self->player->health);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, self->healthText->colour);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            printf("Error: Could not create coins text texture\n");
+            return;
+        }
+        int iW, iH;
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        SDL_Rect dest, *src;
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+        // Sprite
+        src = spriteGetCurrentFrameRect(self->healthSprite);
+        dest.w = self->healthSprite->tileDimensions.x;
+        dest.h = self->healthSprite->tileDimensions.y;
+        dest.x = dest.x - self->healthSprite->tileDimensions.x-5;
+        dest.y = dest.y+(iH/2)-(dest.h/2);
+        SDL_RenderCopy(self->renderer, self->healthSprite->texture, src, &dest);
+    }
+
+}
+
+void _renderCoinCount(engine_t* self, int i) {
+    if (self->coinsText != NULL && self->coinSprite != NULL) {
+        // Text
+        snprintf(self->coinsText->text, self->coinsText->bufferSize, "%.3d",self->player->numCoins);
         SDL_Surface *surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, self->coinsText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
@@ -769,7 +917,7 @@ void _renderCoinCount(engine_t* self) {
         int iW, iH;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest, *src;
-        dest.x = (self->screenWidth/2)-(iW/2);
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
@@ -781,30 +929,38 @@ void _renderCoinCount(engine_t* self) {
         dest.w = self->coinSprite->tileDimensions.x;
         dest.h = self->coinSprite->tileDimensions.y;
         dest.x = dest.x - self->coinSprite->tileDimensions.x-5;
-        dest.y = self->screenHeight-iH-5;
+        dest.y = dest.y+(iH/2)-(dest.h/2);
         SDL_RenderCopy(self->renderer, self->coinSprite->texture, src, &dest);
     }
 }
 
-void _renderScore(engine_t* self) {
-    if (self->scoreText != NULL) {
-        snprintf(self->scoreText->text,self->scoreText->bufferSize, "Score: %.6d",self->player->score);
-        SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
+void _renderPunchCount(engine_t* self, int i) {
+    if (self->punchText != NULL && self->punchSprite != NULL) {
+        // Text
+        snprintf(self->punchText->text, self->punchText->bufferSize, "%.1d",self->player->numPunches);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->punchText->font, self->punchText->text, self->punchText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
-            printf("Error: Could not create score texture\n");
+            printf("Error: Could not create coins text texture\n");
             return;
         }
         int iW, iH;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
-        SDL_Rect dest;
-        dest.x = 5;
+        SDL_Rect dest, *src;
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
+        // Sprite
+        src = spriteGetCurrentFrameRect(self->punchSprite);
+        dest.w = self->punchSprite->tileDimensions.x;
+        dest.h = self->punchSprite->tileDimensions.y;
+        dest.x = dest.x - self->punchSprite->tileDimensions.x-5;
+        dest.y = dest.y+(iH/2)-(dest.h/2);
+        SDL_RenderCopy(self->renderer, self->punchSprite->texture, src, &dest);
     }
 }
 
@@ -867,6 +1023,7 @@ int _setupResources(engine_t* engine) {
     // Setup Player
     sprite_t* playerSprite = spriteAllocate("res/gfx/ship_128.png",engine->renderer);
     engine->player = playerAllocate(playerSprite);
+    engine->player->health = 100;
     engine->player->position.x = playerSprite->dimensions.x;
     engine->player->position.y = engine->screenHeight/2-playerSprite->dimensions.y/2;
     // Setup Backgrounds
@@ -914,9 +1071,16 @@ int _setupResources(engine_t* engine) {
     engine->bgm = musicAllocate("res/bgm/japanism.wav",-1);
     musicPlay(engine->bgm);
     // HUD Elements
-    engine->scoreText  = textAllocate("res/fonts/blocked.ttf",32,20);
-    engine->coinsText  = textAllocate("res/fonts/blocked.ttf",32,10);
-    engine->coinSprite = spriteAllocate("res/gfx/coin_single.png",engine->renderer);
+    engine->scoreText   = textAllocate("res/fonts/blocked.ttf",32,20);
+
+    engine->healthText  = textAllocate("res/fonts/blocked.ttf",32,5);
+    engine->healthSprite = spriteAllocate("res/gfx/health_icon.png",engine->renderer);
+
+    engine->coinsText   = textAllocate("res/fonts/blocked.ttf",32,10);
+    engine->coinSprite  = spriteAllocate("res/gfx/coin_single.png",engine->renderer);
+
+    engine->punchText   = textAllocate("res/fonts/blocked.ttf",32,10);
+    engine->punchSprite = spriteAllocate("res/gfx/fist_icon.png",engine->renderer);
     // Done
     return ENGINE_OK;
 }
@@ -926,7 +1090,7 @@ int _setupResources(engine_t* engine) {
 enemy_t* _createEnemy(engine_t* engine, int numEnemies, int i) {
     sprite_t* enemySprite = spriteAllocate("res/gfx/enemy.png",engine->renderer);
     enemy_t* enemy = enemyAllocate(enemySprite,NULL);
-    enemy->position.x = engine->screenWidth - enemy->sprite->dimensions.x*2;
+    enemy->position.x = engine->screenWidth + enemy->sprite->dimensions.x*i;
     enemy->position.y = (engine->screenHeight/(numEnemies+1)) * (i+1) - enemy->sprite->dimensions.y/2;
 
     enemy->velocity.x = -0.1; 
@@ -983,7 +1147,7 @@ sprite_t* _createExplosionSprite(engine_t* engine) {
 }
 
 sprite_t* _createBoomerangSprite(engine_t* engine) {
-    sprite_t* boomerangSprite = spriteAllocateSpriteSheet("res/gfx/boomerang.png",32,32,8,25,engine->renderer);
+    sprite_t* boomerangSprite = spriteAllocateSpriteSheet("res/gfx/boomerang.png",32,32,8,15,engine->renderer);
     // 0 
     boomerangSprite->frameOrder[7].x = 0;
     boomerangSprite->frameOrder[7].y = 0;
@@ -1073,7 +1237,7 @@ void _createBoomerangProjectile(engine_t* self) {
     // New Projectile
     for (int projIndex = 0; projIndex < ENGINE_MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
-            
+
             sprite_t* boomerangSprite = _createBoomerangSprite(self);
             projectile_t *boomerang = projectileAllocate(boomerangSprite);
 
@@ -1089,7 +1253,7 @@ void _createBoomerangProjectile(engine_t* self) {
             self->lastProjectile = SDL_GetTicks();
 
             boomerang->type = PROJECTILE_TYPE_BOOMERANG; 
-            sfxPlay(self->sfx[0]);
+            //sfxPlay(self->sfx[0]);
 
             break;
         }
@@ -1112,6 +1276,7 @@ void _createEnemyRocketProjectile(engine_t* self, enemy_t* enemy) {
                 rocketSprite->tileDimensions.y/2;
             rocket->velocity.x = -PROJECTILE_DEFAULT_VELOCITY_X/2;
             rocket->velocity.y = -PROJECTILE_DEFAULT_VELOCITY_Y;
+            rocket->damage = 50;
             self->projectiles[projIndex] = rocket;
             rocket->type = PROJECTILE_TYPE_ENEMY_ROCKET; 
             enemy->lastProjectile = SDL_GetTicks();
@@ -1139,7 +1304,7 @@ void _createPunchProjectile(engine_t* self) {
             self->projectiles[projIndex] = fist;
             self->lastProjectile = SDL_GetTicks();
             fist->type = PROJECTILE_TYPE_PUNCH; 
-            sfxPlay(self->sfx[0]);
+            //sfxPlay(self->sfx[0]);
             break;
         }
     }

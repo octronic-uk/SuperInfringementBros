@@ -17,9 +17,10 @@
 typedef struct engine engine_t;
 
 struct engine {
-    char debug;
-    int screenWidth;
-    int screenHeight;
+    char  debug;
+    int   screenWidth;
+    int   screenHeight;
+    char *screenTitle;
     // SDL Objects
     SDL_Window   *window;
     SDL_Renderer *renderer;
@@ -40,10 +41,15 @@ struct engine {
     enemy_t       **enemies;
     vfx_t         **vfx;
     music_t        *bgm;
-    text_t         *scoreText;
-    text_t         *coinsText;
     collectable_t **collectables;
+    // HUD
+    text_t         *scoreText;
     sprite_t       *coinSprite;
+    text_t         *coinsText;
+    sprite_t       *punchSprite;
+    text_t         *punchText;
+    sprite_t       *healthSprite;
+    text_t         *healthText;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;
@@ -52,8 +58,11 @@ struct engine {
     char downPressed;
     char leftPressed;
     char rightPressed;
-    char aBtnPressed;
-    char bBtnPressed;
+    char pauseBtnPressed;
+    char fire1BtnPressed;
+    char fire2BtnPressed;
+    char buyBtnPressed;
+    char weaponBtnPressed;
 };
 
 engine_t* engineAllocate();
@@ -64,6 +73,10 @@ int  engineDefaultInputHandler(engine_t* self);
 int  engineDefaultUpdateHandler(engine_t* self);
 int  engineDefaultRenderHandler(engine_t* self);
 int  engineGetProjectileIndex(engine_t* self, projectile_t* projectile);
+void engineDestroyResources(engine_t* self);
+void engineDestroySDL(engine_t* self);
+int  engineInitSDL(engine_t* self);
+void engineCloseSDL(engine_t* self);
 
 // 'Private' Functions 
 
@@ -92,8 +105,11 @@ void _renderVfx(engine_t *self);
 void _renderCollectables(engine_t* self);
 
 void _renderHUD(engine_t *self);
-void _renderScore(engine_t* self);
-void _renderCoinCount(engine_t* self);
+void _renderScore(engine_t* self, int i);
+void _renderHealth(engine_t* self, int i);
+void _renderCoinCount(engine_t* self, int i);
+void _renderPunchCount(engine_t* self, int i);
+
 // Update 
 void _updateBackgrounds(engine_t* self);
 void _updatePlayer(engine_t* self);

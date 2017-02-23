@@ -9,6 +9,7 @@ typedef struct {
     vector2i_t position;
     vector2f_t velocity;
     char type;
+    int damage;
 } projectile_t;
 
 projectile_t* projectileAllocate(sprite_t* sprite);

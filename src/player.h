@@ -8,10 +8,12 @@ typedef struct {
     vector2i_t position;
     vector2f_t velocity;
     float speed;
-    int coins;
-    int score;
-    int health;
     sprite_t* sprite;
+    // Stats
+    int health;
+    int score;
+    int numCoins;
+    int numPunches;
 } player_t;
 
 player_t* playerAllocate(sprite_t*);

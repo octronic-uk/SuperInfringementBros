@@ -8,6 +8,7 @@ projectile_t* projectileAllocate(sprite_t* sprite) {
     self->velocity.x = 0.0f;
     self->velocity.y = 0.0f;
     self->type = 0;
+    self->damage = 0;
     return self;
 }
 
