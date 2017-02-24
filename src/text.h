@@ -2,6 +2,7 @@
 #define TEXT_H
 
 #include <SDL2/SDL_ttf.h>
+
 #include "vector.h"
 
 typedef struct {

@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_Mixer.h>
 #include <SDL2/SDL_ttf.h>
+
 #include "background.h"
 #include "player.h"
 #include "projectile.h"

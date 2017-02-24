@@ -1,9 +1,10 @@
 #include <stdlib.h>
-#include <stdio.h>
+
 #include "sprite.h"
+#include "logger.h"
 
 sprite_t* spriteAllocate(char* path, SDL_Renderer* renderer) {
-    printf("Allocating new sprite_t from %s\n",path);
+    debug("Allocating new sprite_t from %s\n",path);
     // Object
     sprite_t *s = (sprite_t*)malloc(sizeof(sprite_t));
     // Image Surface
@@ -61,7 +62,7 @@ void spriteAdvanceFrame(sprite_t* self, float timeDelta) {
 }
 
 void spriteDestroy(sprite_t *self) {
-    printf("Destroying sprite_t\n");
+    debug("Destroying sprite_t\n");
     if (self != NULL) {
         // Source Texture
         if (self->texture != NULL) {
@@ -100,7 +101,7 @@ char spriteAnimationFinished(sprite_t* self) {
         return 0;
     }    
 
-    printf("Animation frame:%d/%d, durationRemaining:%d\n",self->currentFrame,self->numFrames,self->frameDurationRemaining);
+    debug("Animation frame:%d/%d, durationRemaining:%d\n",self->currentFrame,self->numFrames,self->frameDurationRemaining);
     return self->currentFrame == self->numFrames-1 && // On last Frame
            self->frameDurationRemaining <= 0;        // Finished showing frame
 }

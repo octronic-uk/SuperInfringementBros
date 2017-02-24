@@ -1,6 +1,8 @@
 #include "projectile.h"
+#include "logger.h"
 
 projectile_t* projectileAllocate(sprite_t* sprite) {
+    debug("Allocating projectile_t\n");
     projectile_t *self = (projectile_t*)malloc(sizeof(projectile_t));
     self->sprite = sprite;
     self->position.x = 0;
@@ -13,6 +15,7 @@ projectile_t* projectileAllocate(sprite_t* sprite) {
 }
 
 void projectileDestroy(projectile_t* self) {
+    debug("Destroying projectile_t\n");
     if (self != NULL) {
         if (self->sprite != NULL) {
             spriteDestroy(self->sprite);

@@ -1,9 +1,9 @@
 #include "vfx.h"
-#include <stdio.h>
+#include "logger.h"
 
 
 vfx_t *vfxAllocate(sprite_t* sprite, char type) {
-    printf("Allocating vfx_t with type %d\n",type);
+    debug("Allocating vfx_t with type %d\n",type);
     vfx_t *self = (vfx_t*)malloc(sizeof(vfx_t));
 
     self->sprite = sprite;
@@ -17,7 +17,7 @@ vfx_t *vfxAllocate(sprite_t* sprite, char type) {
 }
 
 void vfxDestroy(vfx_t* self) {
-    printf("Destroying vfx_t\n");
+    debug("Destroying vfx_t\n");
     if (self != NULL) {
         if (self->sprite != NULL) {
             spriteDestroy(self->sprite);

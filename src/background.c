@@ -1,20 +1,20 @@
 #include "background.h"
-#include <stdio.h>
+#include "logger.h"
 
 background_t* backgroundAllocate(char* path, SDL_Renderer *renderer) {
 
     if (renderer == NULL) {
-        printf("Unable to load background_t image, format is null\n");
+        error("Unable to load background_t image, format is null\n");
         return NULL;
     }
 
-    printf("Allocating new background_t from %s\n",path);
+    debug("Allocating new background_t from %s\n",path);
 
     background_t *bg = (background_t*)malloc(sizeof(background_t)); 
     bg->texture = IMG_LoadTexture(renderer, path);
 
     if (bg->texture == NULL) {
-        printf("Unable to load texture for background_t %s\n",path);
+        error("Unable to load texture for background_t %s\n",path);
         free(bg);
         return NULL;
     }
@@ -32,7 +32,7 @@ background_t* backgroundAllocate(char* path, SDL_Renderer *renderer) {
 }
 
 void backgroundDestroy(background_t* self) {
-    printf("Destroying background_t\n");
+    debug("Destroying background_t\n");
     if (self != NULL) {
         if (self->texture != NULL) {
             SDL_DestroyTexture(self->texture);

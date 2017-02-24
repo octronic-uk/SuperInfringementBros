@@ -1,9 +1,10 @@
+#include <stdio.h>
 #include "engine.h"
 #include "constants.h"
-#include <stdio.h>
+#include "logger.h"
 
 engine_t* engineAllocate() {
-    printf("Allocating new engine_t\n");
+    debug("Allocating new engine_t\n");
     engine_t* engine = (engine_t*)malloc(sizeof(engine_t));
     engine->event    = (SDL_Event*)malloc(sizeof(SDL_Event));
 
@@ -85,7 +86,7 @@ engine_t* engineAllocate() {
 
 int engineInit(engine_t* self, int width, int height, char* title) {
    if (self == NULL) {
-        printf("Engine: Error, engine_t must be allocated before initialisation.\n");
+        error("Engine: Error, engine_t must be allocated before initialisation.\n");
         return ENGINE_ERROR;
     }
 
@@ -94,12 +95,12 @@ int engineInit(engine_t* self, int width, int height, char* title) {
     self->screenTitle  = title;
 
     if (engineInitSDL(self) != ENGINE_OK) {
-        printf("Error during SDL init\n");
+        error("Error during SDL init\n");
         return ENGINE_ERROR;
     }
 
     if (_setupResources(self) != ENGINE_OK) {
-        printf("Error during resource setup\n");
+        error("Error during resource setup\n");
         return ENGINE_ERROR;
     }
 
@@ -108,28 +109,28 @@ int engineInit(engine_t* self, int width, int height, char* title) {
 
 int engineInitSDL(engine_t* self) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
-        printf("Engine: SDL_Init Error = %s\n" , SDL_GetError());
+        error("Engine: SDL_Init Error = %s\n" , SDL_GetError());
         return ENGINE_ERROR;
     }
     if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-        printf("Engine: failed to init SDL image %s\n",IMG_GetError());
+        error("Engine: failed to init SDL image %s\n",IMG_GetError());
         return ENGINE_ERROR;
     }
 
     if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024)==-1) {
-        printf("Mix_OpenAudio: %s\n", Mix_GetError());
+        error("Mix_OpenAudio: %s\n", Mix_GetError());
         return ENGINE_ERROR;
     }
 
     if(TTF_Init()==-1) {
-        printf("TTF_Init: %s\n", TTF_GetError());
+        error("TTF_Init: %s\n", TTF_GetError());
         return ENGINE_ERROR;
     }
 
     self->window = SDL_CreateWindow(self->screenTitle, 0, 0, self->screenWidth, self->screenHeight, SDL_WINDOW_SHOWN);
 
     if (self->window == NULL) {
-        printf("Engine: SDL_CreateWindow Error: %s\n",SDL_GetError());
+        error("Engine: SDL_CreateWindow Error: %s\n",SDL_GetError());
         SDL_Quit();
         return ENGINE_ERROR;
     }
@@ -138,7 +139,7 @@ int engineInitSDL(engine_t* self) {
 
     if (self->renderer == NULL) {
         SDL_DestroyWindow(self->window);
-        printf("SDL_CreateRenderer Error: %s\n",SDL_GetError());
+        error("SDL_CreateRenderer Error: %s\n",SDL_GetError());
         SDL_Quit();
         return ENGINE_ERROR;
     }
@@ -274,7 +275,7 @@ void engineDestroyResources(engine_t* self) {
 }
 
 void engineDestroy(engine_t* self) {
-    printf("Destroying engine_t\n");
+    debug("Destroying engine_t\n");
     if (self != NULL) {
         engineDestroySDL(self);    
         engineDestroyResources(self);
@@ -291,7 +292,7 @@ void engineCloseSDL(engine_t *self) {
 }
 
 int engineLoop(engine_t* self) {
-    printf("Starting engine loop\n");
+    debug("Starting engine loop\n");
     char done = 0;
     do {
         self->currentTime = SDL_GetTicks();
@@ -326,7 +327,7 @@ int engineLoop(engine_t* self) {
 
         self->lastTime = self->currentTime;
     } while (done == 0);
-    printf("Finished engine loop\n");
+    debug("Finished engine loop\n");
     return ENGINE_OK;
 }
 
@@ -336,15 +337,6 @@ int engineDefaultInputHandler(engine_t* self) {
         return ENGINE_QUIT;
     } else if (self->event->type == SDL_KEYDOWN) {
         switch (self->event->key.keysym.sym) {
-            case SDLK_q:
-                if (self->debug) {
-                    printf("Debug Disabled\n");
-                    self->debug = 0;
-                } else {
-                    printf("Debug Enabled\n");
-                    self->debug = 1;
-                }
-                break;
             case SDLK_UP:
                 self->upPressed = 1;
                 break;
@@ -403,9 +395,7 @@ int engineDefaultInputHandler(engine_t* self) {
 }
 
 int engineDefaultUpdateHandler(engine_t* self) { 
-    if (self->debug)  {
-        printf("DeltaTime: %.2fms\n",self->deltaTime);
-    }
+    debug("DeltaTime: %.2fms\n",self->deltaTime);
     _updateBackgrounds(self);
     _updatePlayer(self);
     _updateProjectiles(self);
@@ -647,18 +637,14 @@ void _updateEnemies(engine_t* self) {
         nextEnemy->position.x += nextEnemy->velocity.x*self->deltaTime;
         nextEnemy->position.y += nextEnemy->velocity.y*self->deltaTime;
 
-        if (self->debug == 1) {
-            printf ("Enemy Velocity %f, Decay %f\n",nextEnemy->velocity.x,nextEnemy->velocityDecay.x);
-        }
+        debug("Enemy Velocity %f, Decay %f\n",nextEnemy->velocity.x,nextEnemy->velocityDecay.x);
 
         if (nextEnemy->velocity.x > 0.1) {
             nextEnemy->velocity.x -= nextEnemy->velocityDecay.x;
         } else if (nextEnemy->velocity.x < -0.1) {
             nextEnemy->velocity.x += nextEnemy->velocityDecay.x;
         } else if (nextEnemy->velocity.x < 0.1 && nextEnemy->velocity.x > -0.1) {
-            if (self->debug == 1) {
-                printf("Reset velocity\n");
-            }
+            debug("Reset velocity\n");
             nextEnemy->state = ENEMY_STATE_PATH;
             nextEnemy->velocity.x = ENEMY_DEFAULT_VELOCITY;
             nextEnemy->velocityDecay.x = 0;
@@ -705,9 +691,7 @@ void _updateEnemies(engine_t* self) {
         }
         activeEnemies++;
     }
-    if (self->debug) {
-        printf("%d active enemies\n",activeEnemies);
-    }
+    debug("%d active enemies\n",activeEnemies);
 }
 
 void _updateProjectiles(engine_t* self) {
@@ -733,9 +717,7 @@ void _updateProjectiles(engine_t* self) {
         nextProj->position.y += nextProj->velocity.y*self->deltaTime;
         activeProjectiles++;
     }
-    if (self->debug) {
-        printf("%d active projectiles\n",activeProjectiles);
-    }
+    debug("%d active projectiles\n",activeProjectiles);
 }
 
 // RENDER ======================================================================
@@ -857,7 +839,7 @@ void _renderScore(engine_t* self, int i) {
         SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
-            printf("Error: Could not create score texture\n");
+            error("Error: Could not create score texture\n");
             return;
         }
         int iW, iH;
@@ -880,7 +862,7 @@ void _renderHealth(engine_t* self, int i) {
         SDL_Surface *surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, self->healthText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
-            printf("Error: Could not create coins text texture\n");
+            error("Error: Could not create coins text texture\n");
             return;
         }
         int iW, iH;
@@ -911,7 +893,7 @@ void _renderCoinCount(engine_t* self, int i) {
         SDL_Surface *surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, self->coinsText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
-            printf("Error: Could not create coins text texture\n");
+            error("Error: Could not create coins text texture\n");
             return;
         }
         int iW, iH;
@@ -941,7 +923,7 @@ void _renderPunchCount(engine_t* self, int i) {
         SDL_Surface *surface = TTF_RenderText_Solid(self->punchText->font, self->punchText->text, self->punchText->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
-            printf("Error: Could not create coins text texture\n");
+            error("Error: Could not create coins text texture\n");
             return;
         }
         int iW, iH;
@@ -1077,10 +1059,10 @@ int _setupResources(engine_t* engine) {
     engine->healthSprite = spriteAllocate("res/gfx/health_icon.png",engine->renderer);
 
     engine->coinsText   = textAllocate("res/fonts/blocked.ttf",32,10);
-    engine->coinSprite  = spriteAllocate("res/gfx/coin_single.png",engine->renderer);
+    engine->coinSprite  = spriteAllocate("res/gfx/coin_icon.png",engine->renderer);
 
     engine->punchText   = textAllocate("res/fonts/blocked.ttf",32,10);
-    engine->punchSprite = spriteAllocate("res/gfx/fist_icon.png",engine->renderer);
+    engine->punchSprite = spriteAllocate("res/gfx/punch_icon.png",engine->renderer);
     // Done
     return ENGINE_OK;
 }
@@ -1293,7 +1275,7 @@ void _createPunchProjectile(engine_t* self) {
     // New Projectile
     for (int projIndex = 0; projIndex < ENGINE_MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
-            sprite_t* fistSprite = spriteAllocate("res/gfx/fist.png",self->renderer);
+            sprite_t* fistSprite = spriteAllocate("res/gfx/punch.png",self->renderer);
             projectile_t *fist = projectileAllocate(fistSprite);
             fist->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
             fist->position.y = 

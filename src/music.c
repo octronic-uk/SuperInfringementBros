@@ -1,7 +1,8 @@
 #include "music.h"
+#include "logger.h"
 
 music_t* musicAllocate(char* audioFile, int loops) {
-    printf("Allocating music_t from %s loop=%d\n",audioFile,loops);
+    debug("Allocating music_t from %s loop=%d\n",audioFile,loops);
     music_t *music = (music_t*)malloc(sizeof(music_t));
     music->music = Mix_LoadMUS(audioFile);
     if (music->music == NULL) {
@@ -14,6 +15,7 @@ music_t* musicAllocate(char* audioFile, int loops) {
 }
 
 void musicDestroy(music_t* self) {
+    debug("Destroying music_t\n");
     if (self != NULL) {
         if(self->music != NULL) {
             Mix_FreeMusic(self->music);
@@ -25,6 +27,6 @@ void musicDestroy(music_t* self) {
 
 void musicPlay(music_t* self) {
     if(Mix_PlayMusic(self->music, self->loops) == -1) {
-        printf("Mix_PlayMusic: Error! %s\n",Mix_GetError());
+       error("Mix_PlayMusic: Error! %s\n",Mix_GetError());
     }
 }

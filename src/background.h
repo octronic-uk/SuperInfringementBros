@@ -1,8 +1,9 @@
 #ifndef BACKGROUND_H
 #define BACKGROUND_H
 
-#include "vector.h"
 #include <SDL2/SDL_image.h>
+
+#include "vector.h"
 
 typedef struct {
     SDL_Texture *texture;

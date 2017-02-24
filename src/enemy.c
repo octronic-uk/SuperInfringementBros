@@ -1,9 +1,9 @@
 #include "enemy.h"
 #include "constants.h"
-#include <stdio.h>
+#include "logger.h"
 
 enemy_t* enemyAllocate(sprite_t* sprite, path_t* path) {
-    printf("Allocating enemy_t\n");
+    debug("Allocating enemy_t\n");
     enemy_t *enemy = (enemy_t*)malloc(sizeof(enemy_t));
     enemy->sprite = sprite;
     enemy->path = path;
@@ -25,7 +25,7 @@ enemy_t* enemyAllocate(sprite_t* sprite, path_t* path) {
 }
 
 void enemyDestroy(enemy_t* self) {
-    printf("Destroying enemy_t\n");
+    debug("Destroying enemy_t\n");
     if (self != NULL) {
         if (self->sprite != NULL) {
             spriteDestroy(self->sprite);

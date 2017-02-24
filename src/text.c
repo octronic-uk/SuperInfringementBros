@@ -1,13 +1,13 @@
 #include "text.h"
-#include <stdio.h>
+#include "logger.h"
 
 text_t *textAllocate(char* fontPath, int size, int bufferSize) {
-    printf("Allocating text_t from %s, size %d\n",fontPath,size);
+    debug("Allocating text_t from %s, size %d\n",fontPath,size);
     text_t *text = (text_t*)malloc(sizeof(text_t));
 
     text->font = TTF_OpenFont(fontPath,size);
     if (text->font == NULL) {
-        printf("Unable to open font %s. %s\n",fontPath,TTF_GetError());
+        error("Unable to open font %s. %s\n",fontPath,TTF_GetError());
         free(text);
         return NULL;
     }
@@ -27,7 +27,7 @@ text_t *textAllocate(char* fontPath, int size, int bufferSize) {
 }
 
 void textDestroy(text_t* self) {
-    printf("Destroying text_t\n");
+    debug("Destroying text_t\n");
     if (self != NULL) {
         if (self->font != NULL) {
             TTF_CloseFont(self->font);

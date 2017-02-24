@@ -1,7 +1,8 @@
 #include "collectable.h"
+#include "logger.h"
 
 collectable_t *collectableAllocate(sprite_t* sprite, char type) {
-    printf("Allocating collectable_t\n"); 
+    debug("Allocating collectable_t\n"); 
     collectable_t *c = (collectable_t*)malloc(sizeof(collectable_t));
     c->sprite = sprite;
     c->position.x = 0;
@@ -13,7 +14,7 @@ collectable_t *collectableAllocate(sprite_t* sprite, char type) {
 }
 
 void collectableDestroy(collectable_t* self) {
-    printf("Destroying collectable_t\n"); 
+    debug("Destroying collectable_t\n"); 
     if (self != NULL) {
         if (self->sprite != NULL) {
             spriteDestroy(self->sprite);
