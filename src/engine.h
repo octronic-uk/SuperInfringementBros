@@ -43,6 +43,7 @@ struct engine {
     vfx_t         **vfx;
     music_t        *bgm;
     collectable_t **collectables;
+    text_t        **tfx;
     // HUD
     text_t         *scoreText;
     sprite_t       *coinSprite;
@@ -51,10 +52,7 @@ struct engine {
     text_t         *punchText;
     sprite_t       *healthSprite;
     text_t         *healthText;
-    // Projectlie Vars
-    float lastProjectile;
-    float projectileDelay;
-    // Input
+        // Input
     char upPressed;
     char downPressed;
     char leftPressed;
@@ -84,16 +82,19 @@ void engineCloseSDL(engine_t* self);
 // Setup/Init
 int       _setupResources(engine_t* self);
 
+// Create: Create assets for ...
 sprite_t* _createBoomerangSprite(engine_t* engine);
 sprite_t* _createEnemyRocketSprite(engine_t* engine);
 sprite_t* _createCoinSprite(engine_t* engine);
 sprite_t* _createExplosionSprite(engine_t* engine);
 enemy_t*  _createEnemy(engine_t* engine, int numEnemies, int i);
 
-void _createPunchProjectile(engine_t* self);
-void _createBoomerangProjectile(engine_t* self);
-void _createEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
-void _createCoinCollectable(engine_t *self, vector2i_t pos);
+// Insert: Insert into runtime ...
+int _insertPopupText(engine_t* self, char* font, int size, char* text, vector2i_t position, int r, int g, int b, int a);
+int _insertPunchProjectile(engine_t* self);
+int _insertBoomerangProjectile(engine_t* self);
+int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
+int _insertCoinCollectable(engine_t *self, vector2i_t pos);
 
 void _explodeEnemy(engine_t* self, enemy_t* enemy);
 

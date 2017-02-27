@@ -14,6 +14,11 @@ typedef struct {
     int score;
     int numCoins;
     int numPunches;
+    // Projectlie Vars
+    float lastProjectile;
+    float projectileDelay;
+    float lastPunch;
+    float punchDelay;
 } player_t;
 
 player_t* playerAllocate(sprite_t*);

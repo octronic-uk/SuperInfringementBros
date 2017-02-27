@@ -17,7 +17,16 @@ player_t* playerAllocate(sprite_t* sprite) {
     p->sprite = sprite;
     p->speed = PLAYER_DEFAULT_SPEED;
     p->numCoins = 0;
-    p->numPunches = 0;
+    p->numPunches = 5;
+
+
+    p->projectileDelay = PROJECTILE_DEFAULT_DELAY;
+    p->lastProjectile = 0.0f;
+
+    p->punchDelay = PROJECTILE_DEFAULT_PUNCH_DELAY;
+    p->lastPunch = 0.0f;
+
+
     return p;
 }
 

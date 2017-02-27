@@ -14,6 +14,7 @@ typedef struct {
 } text_t;
 
 text_t *textAllocate(char *fontPath, int size, int bufferSize);
+text_t *textAllocateWithString(char *fontPath, int size, char* content);
 void textDestroy(text_t* self);
 
 #endif // TEXT_H

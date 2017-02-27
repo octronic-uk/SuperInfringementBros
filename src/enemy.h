@@ -2,21 +2,24 @@
 #define ENEMY_H
 
 #include "sprite.h"
-#include "path.h"
 
-typedef struct {
+typedef struct enemy enemy_t;
+
+struct enemy {
     char       state;
     sprite_t  *sprite;
     vector2i_t position;
     vector2f_t velocity;
     vector2f_t velocityDecay;
     int health;
-    path_t *path;
     float projectileDelay;
     float lastProjectile;
-} enemy_t;
+    float spawnTime;
+    // Path update function
+    void (*pathFunction )(enemy_t* enemy, float currentTime, float deltaTime);
+};
 
-enemy_t* enemyAllocate(sprite_t* sprite, path_t* path);
+enemy_t* enemyAllocate(sprite_t* sprite);
 void enemyDestroy(enemy_t* self);
 
 #endif // ENEMY_H
