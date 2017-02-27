@@ -90,7 +90,7 @@ sprite_t* _createExplosionSprite(engine_t* engine);
 enemy_t*  _createEnemy(engine_t* engine, int numEnemies, int i);
 
 // Insert: Insert into runtime ...
-int _insertPopupText(engine_t* self, char* font, int size, char* text, vector2i_t position, int r, int g, int b, int a);
+int _insertPopupText(engine_t* self, char* text, vector2i_t position);
 int _insertPunchProjectile(engine_t* self);
 int _insertBoomerangProjectile(engine_t* self);
 int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
@@ -104,6 +104,7 @@ void _renderPlayer(engine_t* self);
 void _renderEnemies(engine_t* self);
 void _renderProjectiles(engine_t* self);
 void _renderVfx(engine_t *self);
+void _renderTfx(engine_t *self);
 void _renderCollectables(engine_t* self);
 
 void _renderHUD(engine_t *self);
@@ -118,6 +119,7 @@ void _updatePlayer(engine_t* self);
 void _updateEnemies(engine_t* self);
 void _updateProjectiles(engine_t* self);
 void _updateVfx(engine_t* self);
+void _updateTfx(engine_t* self);
 void _updateCollectables(engine_t *self);
 
 projectile_t**  _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);

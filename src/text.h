@@ -5,16 +5,18 @@
 
 #include "vector.h"
 
-typedef struct {
+typedef struct text text_t;
+
+struct text {
     vector2i_t position;
     SDL_Color  colour;
     char      *text;
     int        bufferSize;
     TTF_Font  *font;
-} text_t;
+    void (*updateFunction )(text_t* enemy, float currentTime, float deltaTime);
+};
 
 text_t *textAllocate(char *fontPath, int size, int bufferSize);
-text_t *textAllocateWithString(char *fontPath, int size, char* content);
 void textDestroy(text_t* self);
 
 #endif // TEXT_H

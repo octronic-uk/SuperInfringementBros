@@ -415,6 +415,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
     _updateCollectables(self);
     _updateEnemies(self);
     _updateVfx(self);
+    _updateTfx(self);
     // Done
     return ENGINE_OK;
 }  
@@ -437,6 +438,7 @@ int engineDefaultRenderHandler(engine_t* self) {
     _renderProjectiles(self);
     _renderVfx(self);
     _renderCollectables(self);
+    _renderTfx(self);
     _renderHUD(self);
     SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
@@ -566,6 +568,25 @@ void _updatePlayer(engine_t* self) {
     }
 }
 
+void _updateTfx(engine_t* self) {
+    for (int tIndex=0; tIndex<ENGINE_MAX_TFX; tIndex++) {
+        text_t *nextTfx = self->tfx[tIndex];
+
+        if (nextTfx == NULL) {
+            continue;
+        }
+
+        if (nextTfx->updateFunction != NULL) {
+            nextTfx->updateFunction(nextTfx,self->currentTime,self->deltaTime);
+        }
+
+        if (nextTfx->position.y < -100 || nextTfx->colour.a == 0) {
+            textDestroy(nextTfx);
+            self->tfx[tIndex] = NULL;
+        }
+    }
+}
+
 void _updateVfx(engine_t* self) {
     for (int vIndex=0; vIndex<ENGINE_MAX_VFX; vIndex++) {
         vfx_t *nextVfx = self->vfx[vIndex];
@@ -574,9 +595,9 @@ void _updateVfx(engine_t* self) {
             continue;
         }
 
-        nextVfx->position.x += nextVfx->velocity.x;
-        nextVfx->position.y += nextVfx->velocity.y;
-
+        if (nextVfx->updateFunction != NULL) {
+            nextVfx->updateFunction(nextVfx,self->currentTime,self->deltaTime);
+        }
 
         if (spriteAnimationFinished(nextVfx->sprite)) {
             if (nextVfx->type == VFX_TYPE_ENEMY_EXPLOSION) {
@@ -620,24 +641,13 @@ void _updateCollectables(engine_t* self) {
     }
 }
 
-void _enemySinePath(enemy_t* enemy, float currentTime, float deltaTime) {
-    enemy->velocity.y = 0.25f;
-    int lifeTime = currentTime - enemy->spawnTime;
-    int scale = 1000;
-    int mod = lifeTime % scale;
-    debug("SinePath Lifetime %d mod %d = %d\n",lifeTime, scale, mod);
-    if (mod < scale/2) {
-        enemy->position.y -= enemy->velocity.y * deltaTime;
-    } else {
-        enemy->position.y += enemy->velocity.y * deltaTime;
-    }
-    enemy->position.x += enemy->velocity.x * deltaTime;
+void _vfxLinearPath(vfx_t* self, float currentTime, float deltaTime) {
+    self->position.x += self->velocity.x;
+    self->position.y += self->velocity.y;
 }
-
 
 void _enemyLinearPath(enemy_t* enemy, float currentTime, float deltaTime) {
     enemy->position.x += enemy->velocity.x * deltaTime;
-    enemy->position.y += enemy->velocity.y * deltaTime;
 }
 
 void _updateEnemies(engine_t* self) {
@@ -667,7 +677,7 @@ void _updateEnemies(engine_t* self) {
         // Needs Update
         switch(nextEnemy->state) {
             case ENEMY_STATE_PATH:
-                nextEnemy->pathFunction(nextEnemy, self->currentTime, self->deltaTime);
+                nextEnemy->updateFunction(nextEnemy, self->currentTime, self->deltaTime);
                 break;
             case  ENEMY_STATE_PUNCHED:
                 debug("Enemy Velocity %f, Decay %f\n",nextEnemy->velocity.x,nextEnemy->velocityDecay.x);
@@ -709,10 +719,12 @@ void _updateEnemies(engine_t* self) {
                     nextEnemy->velocityDecay.x = 0.1; 
                     nextEnemy->health -= 50;
                     nextEnemy->state = ENEMY_STATE_PUNCHED;
-                    self->player->score += 200;
+                    self->player->score += 500;
+                    _insertPopupText(self,"500",nextEnemy->position);
                 } else if (collidedProjectile->type == PROJECTILE_TYPE_BOOMERANG) {
+                    _insertPopupText(self,"50",nextEnemy->position);
                     self->player->score += 50;
-                    nextEnemy->health -= 10;
+                    nextEnemy->health -= 25;
                     whichSfx = 3;
                 }
 
@@ -805,6 +817,33 @@ void _renderEnemies(engine_t* self) {
         if (src != NULL) {
             free (src);
         }
+    }
+}
+
+void _renderTfx(engine_t* self) {
+    for (int tIndex=0; tIndex < ENGINE_MAX_TFX; tIndex++) {
+        text_t *nextTfx = self->tfx[tIndex];
+        if (nextTfx == NULL) {
+            continue;
+        } 
+
+        SDL_Surface *surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,nextTfx->colour);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        SDL_SetTextureAlphaMod(texture,nextTfx->colour.a);
+        if (texture == NULL){
+            error("Error: Could not create tfx texture\n");
+            return;
+        }
+        int iW, iH;
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        SDL_Rect dest;
+        dest.x = nextTfx->position.x;
+        dest.y = nextTfx->position.y;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
     }
 }
 
@@ -1000,6 +1039,7 @@ void _explodeEnemy(engine_t* self, enemy_t* enemy) {
 
             explosion->velocity.x = enemy->velocity.x;
             explosion->velocity.y = enemy->velocity.y;
+            explosion->updateFunction = &_vfxLinearPath;
 
             self->vfx[vIndex] = explosion;
 
@@ -1121,7 +1161,7 @@ enemy_t* _createEnemy(engine_t* engine, int numEnemies, int i) {
     enemy->velocity.y = 0.0f;
     enemy->health = 100;
     enemy->state = ENEMY_STATE_PATH;
-    enemy->pathFunction = &_enemySinePath;
+    enemy->updateFunction = &_enemyLinearPath;
     return enemy;
 }
 
@@ -1337,16 +1377,30 @@ int _insertPunchProjectile(engine_t* self) {
     return -1;
 }
 
-int _insertPopupText(engine_t* self, char* font, int size, char* text, vector2i_t position, int r, int g, int b, int a) {
+void _popupTextFloat(text_t* self, float currentTime, float deltaTime) {
+    if (self != NULL) {
+        self->position.y -= 0.5f*deltaTime;
+        int alphaDec = 25;
+        if (self->colour.a > alphaDec)  {
+            self->colour.a -= alphaDec;
+        } else {
+            self->colour.a = 0;
+        }
+    }    
+}
+
+int _insertPopupText(engine_t* self, char* text, vector2i_t position) {
     for (int tIndex=0; tIndex<ENGINE_MAX_TFX; tIndex++) {
         if (self->tfx[tIndex] == NULL) {
-            text_t* tfx = textAllocateWithString(font,size,text);
+            text_t* tfx = textAllocate("res/fonts/lcd.ttf",24,strlen(text)+1);
             if (tfx != NULL) {
+                snprintf(tfx->text,tfx->bufferSize,"%s",text);
                 tfx->position = position;
-                tfx->colour.r = r;
-                tfx->colour.g = g;
-                tfx->colour.b = b;
-                tfx->colour.a = a;
+                tfx->colour.r = 255;
+                tfx->colour.g = 0;
+                tfx->colour.b = 0;
+                tfx->colour.a = 255;
+                tfx->updateFunction = &_popupTextFloat;
                 self->tfx[tIndex] = tfx;
                 return tIndex;
             } else {

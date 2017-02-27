@@ -12,6 +12,7 @@ vfx_t *vfxAllocate(sprite_t* sprite, char type) {
     self->position.y = 0;
     self->velocity.x = 0.0f;
     self->velocity.y = 0.0f;
+    self->updateFunction = NULL;
 
     return self;
 }

@@ -4,12 +4,16 @@
 #include "sprite.h"
 #include "vector.h"
 
-typedef struct {
+typedef struct vfx vfx_t;
+
+struct vfx {
     char        type;
     sprite_t   *sprite;
     vector2i_t  position;
     vector2f_t  velocity;
-} vfx_t;
+    // Path update function
+    void (*updateFunction )(vfx_t* self, float currentTime, float deltaTime);
+};
 
 vfx_t *vfxAllocate(sprite_t* sprite, char type);
 void vfxDestroy(vfx_t* self);

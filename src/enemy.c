@@ -21,7 +21,7 @@ enemy_t* enemyAllocate(sprite_t* sprite) {
     enemy->health = 0;
     enemy->lastProjectile = 0.0f;
     enemy->projectileDelay = ENEMY_PROJECTILE_DELAY;
-    enemy->pathFunction = NULL;
+    enemy->updateFunction = NULL;
     enemy->spawnTime = SDL_GetTicks();
 
     return enemy;
