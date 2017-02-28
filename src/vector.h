@@ -11,6 +11,15 @@ typedef struct {
     int y;
 } vector2i_t;
 
-int vector2iCollision(vector2i_t aPosision, vector2i_t aDimensions, vector2i_t bPosision, vector2i_t bDimensions);
+int vector2iCollision(
+        vector2i_t aPosision, vector2i_t aDimensions,
+        vector2i_t bPosision, vector2i_t bDimensions
+);
+
+int vector2iScaledCollision(
+        vector2i_t aPosision, vector2i_t aDimensions, 
+        vector2i_t bPosision, vector2i_t bDimensions, 
+        float scaleX, float scaleY
+);
 
 #endif // VECTOR_H

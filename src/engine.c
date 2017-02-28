@@ -11,37 +11,37 @@ engine_t* engineAllocate() {
     // Malloc Backgrounds Array
     engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*ENGINE_MAX_BACKGROUNDS);
     for (int bgIndex = 0; bgIndex < ENGINE_MAX_BACKGROUNDS; bgIndex++) {
-        engine->backgrounds[bgIndex] = NULL; 
+        engine->backgrounds[bgIndex] = NULL;
     }
 
     // Malloc Projectiles Array
     engine->projectiles = (projectile_t**)malloc(sizeof(projectile_t*)*ENGINE_MAX_PROJECTILES);
     for (int pIndex = 0; pIndex < ENGINE_MAX_PROJECTILES; pIndex++) {
-        engine->projectiles[pIndex] = NULL; 
+        engine->projectiles[pIndex] = NULL;
     }
 
     // Malloc SFX Array
     engine->sfx = (sfx_t**)malloc(sizeof(sfx_t*)*ENGINE_MAX_SFX);
     for (int sIndex = 0; sIndex < ENGINE_MAX_SFX; sIndex++) {
-        engine->sfx[sIndex] = NULL; 
+        engine->sfx[sIndex] = NULL;
     }
 
     // Malloc Enemy Array
     engine->enemies = (enemy_t**)malloc(sizeof(enemy_t*)*ENGINE_MAX_ENEMIES);
     for (int eIndex = 0; eIndex < ENGINE_MAX_ENEMIES; eIndex++) {
-        engine->enemies[eIndex] = NULL; 
+        engine->enemies[eIndex] = NULL;
     }
 
     // Malloc vfx Array
     engine->vfx = (vfx_t**)malloc(sizeof(vfx_t*)*ENGINE_MAX_VFX);
     for (int vIndex = 0; vIndex < ENGINE_MAX_VFX; vIndex++) {
-        engine->vfx[vIndex] = NULL; 
+        engine->vfx[vIndex] = NULL;
     }
 
     // Malloc tfx Array
     engine->tfx = (text_t**)malloc(sizeof(text_t*)*ENGINE_MAX_TFX);
     for (int tIndex = 0; tIndex < ENGINE_MAX_TFX; tIndex++) {
-        engine->tfx[tIndex] = NULL; 
+        engine->tfx[tIndex] = NULL;
     }
 
     // Malloc collectables array
@@ -64,9 +64,12 @@ engine_t* engineAllocate() {
     engine->healthText   = NULL;
 
     // Init Variables
-    engine->currentTime    = 0.0f;
-    engine->lastTime       = 0.0f;
-    engine->deltaTime      = 0.0f;;
+    engine->currentTime     = 0.0f;
+    engine->lastTime        = 0.0f;
+    engine->deltaTime       = 0.0f;;
+    engine->lastEnemySpawn  = 0.0f;
+    engine->enemySpawnDelay = ENEMY_SPAWN_DELAY;
+
     engine->window         = NULL;
     engine->renderer       = NULL;
     engine->inputFunction  = NULL;
@@ -197,7 +200,7 @@ void engineDestroyResources(engine_t* self) {
         free(self->projectiles);
         self->projectiles = NULL;
     }
-    // Delete all enemies 
+    // Delete all enemies
     if (self->enemies != NULL) {
         for (int eIndex=0; eIndex<ENGINE_MAX_ENEMIES; eIndex++) {
             if (self->enemies[eIndex] != NULL) {
@@ -237,7 +240,7 @@ void engineDestroyResources(engine_t* self) {
                 collectableDestroy(self->collectables[cIndex]);
                 self->collectables[cIndex] = NULL;
             }
-        } 
+        }
         free(self->collectables);
         self->collectables = NULL;
     }
@@ -273,7 +276,7 @@ void engineDestroyResources(engine_t* self) {
     if (self->coinSprite != NULL) {
         spriteDestroy(self->coinSprite);
         self->coinSprite = NULL;
-    } 
+    }
 
     // Destroy Punch Text
     if (self->punchText != NULL) {
@@ -290,7 +293,7 @@ void engineDestroyResources(engine_t* self) {
 void engineDestroy(engine_t* self) {
     debug("Destroying engine_t\n");
     if (self != NULL) {
-        engineDestroySDL(self);    
+        engineDestroySDL(self);
         engineDestroyResources(self);
         engineCloseSDL(self);
         free(self);
@@ -334,7 +337,7 @@ int engineLoop(engine_t* self) {
             if (result == ENGINE_QUIT) {
                 done = 1;
             }
-        } else { 
+        } else {
             done = 1;
         }
 
@@ -344,7 +347,7 @@ int engineLoop(engine_t* self) {
     return ENGINE_OK;
 }
 
-int engineDefaultInputHandler(engine_t* self) { 
+int engineDefaultInputHandler(engine_t* self) {
     SDL_PollEvent(self->event);
     if (self->event->type == SDL_QUIT) {
         return ENGINE_QUIT;
@@ -403,11 +406,11 @@ int engineDefaultInputHandler(engine_t* self) {
                 self->buyBtnPressed = 0;
                 break;
         }
-    } 
+    }
     return ENGINE_OK;
 }
 
-int engineDefaultUpdateHandler(engine_t* self) { 
+int engineDefaultUpdateHandler(engine_t* self) {
     info("DeltaTime: %.2fms\n",self->deltaTime);
     _updateBackgrounds(self);
     _updatePlayer(self);
@@ -418,7 +421,7 @@ int engineDefaultUpdateHandler(engine_t* self) {
     _updateTfx(self);
     // Done
     return ENGINE_OK;
-}  
+}
 
 int engineGetProjectileIndex(engine_t *self, projectile_t* projectile) {
     for (int pIndex = 0; pIndex<ENGINE_MAX_PROJECTILES; pIndex++){
@@ -442,7 +445,7 @@ int engineDefaultRenderHandler(engine_t* self) {
     _renderHUD(self);
     SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
-}  
+}
 
 // UPDATE ======================================================================
 
@@ -454,7 +457,7 @@ void _updateBackgrounds(engine_t* self) {
 
         if (nextBg == NULL) {
             continue;
-        } 
+        }
 
         if (nextBg->scroll == 1) {
             nextBg->position.x += nextBg->velocity.x*self->deltaTime;
@@ -474,8 +477,17 @@ void _updateBackgrounds(engine_t* self) {
 }
 
 void _updatePlayer(engine_t* self) {
+    if (self->player->state == PLAYER_STATE_DEAD) {
+        return;
+    }
     // Player exists
     if (self->player != NULL) {
+        // U dead?
+        if (self->player->health <= 0) {
+            _explodePlayer(self);     
+            self->player->state = PLAYER_STATE_DEAD;
+            return;
+        }
         // Check projectile collisions
         vector2i_t playerPosition = self->player->position;
         vector2i_t playerDimensions = self->player->sprite->tileDimensions;
@@ -487,20 +499,39 @@ void _updatePlayer(engine_t* self) {
             }
             vector2i_t projPosition = proj->position;
             vector2i_t projDimensions = proj->sprite->tileDimensions;
-            int hasCollided = vector2iCollision(playerPosition,playerDimensions,projPosition,projDimensions);
+            int hasCollided = vector2iScaledCollision(playerPosition,playerDimensions,projPosition,projDimensions,0.75,0.75);
             if(hasCollided) {
                 self->player->health -= proj->damage;
                 projectileDestroy(proj);
                 self->projectiles[pIndex] = NULL;
             }
         }
+        // Check enemy collisions
+        for (int eIndex=0; eIndex<ENGINE_MAX_ENEMIES; eIndex++) {
+            enemy_t* enemy = self->enemies[eIndex];
+            if (enemy == NULL) {
+                continue;
+            }
+            vector2i_t ePosition = enemy->position;
+            vector2i_t eDimensions = enemy->sprite->tileDimensions;
+            int hasCollided = vector2iScaledCollision(playerPosition,playerDimensions,ePosition,eDimensions,0.75,0.75);
+            if(hasCollided) {
+                self->player->health = 0;
+                _explodeEnemy(self,enemy);
+                enemyDestroy(enemy);
+                self->enemies[eIndex] = NULL;
+                self->projectiles[eIndex] = NULL;
+                return;
+            }
+        }
+
         // Process Player Motion Input
         // Set Velocities
         // X Axis
         if (self->leftPressed == 1 && self->rightPressed == 1) {
             self->player->velocity.x = 0.0f;
         }
-        else if (self->leftPressed == 1 ) { 
+        else if (self->leftPressed == 1 ) {
             self->player->velocity.x = -self->player->speed*self->deltaTime;
         }
         else if (self->rightPressed == 1) {
@@ -517,7 +548,7 @@ void _updatePlayer(engine_t* self) {
                 self->player->position.x = 0;
                 self->player->velocity.x = 0.0f;
             }
-        } 
+        }
         else if (self->player->velocity.x > 0.0f) { // Right
             if (self->player->position.x < self->screenWidth - self->player->sprite->dimensions.x) {
                 self->player->position.x += self->player->velocity.x;
@@ -532,7 +563,7 @@ void _updatePlayer(engine_t* self) {
         if (self->upPressed == 1 && self->downPressed == 1) {
             self->player->velocity.y = 0.0f;
         }
-        else if (self->upPressed == 1 ) { 
+        else if (self->upPressed == 1 ) {
             self->player->velocity.y = -self->player->speed*self->deltaTime;
         } else if (self->downPressed == 1){
             self->player->velocity.y = self->player->speed*self->deltaTime;
@@ -540,7 +571,7 @@ void _updatePlayer(engine_t* self) {
             self->player->velocity.y = 0.0f;
         }
         // Move Y
-        if (self->player->velocity.y < 0.0f)  { // Up 
+        if (self->player->velocity.y < 0.0f)  { // Up
             if (self->player->position.y > 0) {
                 self->player->position.y += self->player->velocity.y;
             } else {
@@ -558,12 +589,12 @@ void _updatePlayer(engine_t* self) {
         }
 
         if (self->fire1BtnPressed == 1) {
-            _insertBoomerangProjectile(self);
+            _fireDefaultProjectile(self);
         }
         else if (self->fire2BtnPressed == 1) {
-            if (self->player->numPunches > 0) {
+            if (self->player->numCoins >= PROJECTILE_PUNCH_COST) {
                 _insertPunchProjectile(self);
-            } 
+            }
         }
     }
 }
@@ -577,7 +608,7 @@ void _updateTfx(engine_t* self) {
         }
 
         if (nextTfx->updateFunction != NULL) {
-            nextTfx->updateFunction(nextTfx,self->currentTime,self->deltaTime);
+            nextTfx->updateFunction(nextTfx,(void*)self);
         }
 
         if (nextTfx->position.y < -100 || nextTfx->colour.a == 0) {
@@ -596,12 +627,15 @@ void _updateVfx(engine_t* self) {
         }
 
         if (nextVfx->updateFunction != NULL) {
-            nextVfx->updateFunction(nextVfx,self->currentTime,self->deltaTime);
+            nextVfx->updateFunction(nextVfx,(void*)self);
         }
 
         if (spriteAnimationFinished(nextVfx->sprite)) {
             if (nextVfx->type == VFX_TYPE_ENEMY_EXPLOSION) {
-                _insertCoinCollectable(self,nextVfx->position);
+                vector2i_t pos;
+                pos.x = nextVfx->position.x + nextVfx->sprite->tileDimensions.x/2;
+                pos.y = nextVfx->position.y + nextVfx->sprite->tileDimensions.y/2;
+                _insertCoinCollectable(self,pos);
             }
             vfxDestroy(nextVfx);
             self->vfx[vIndex] = NULL;
@@ -633,7 +667,7 @@ void _updateCollectables(engine_t* self) {
                     continue;
                 }
                 break;
-        } 
+        }
 
         // Update position
         nextCol->position.x += nextCol->velocity.x;
@@ -641,16 +675,44 @@ void _updateCollectables(engine_t* self) {
     }
 }
 
-void _vfxLinearPath(vfx_t* self, float currentTime, float deltaTime) {
+void _vfxLinearPath(vfx_t* self, void* vEngine) {
     self->position.x += self->velocity.x;
     self->position.y += self->velocity.y;
 }
 
-void _enemyLinearPath(enemy_t* enemy, float currentTime, float deltaTime) {
-    enemy->position.x += enemy->velocity.x * deltaTime;
+void _enemyLinearPath(enemy_t* enemy, void* vEngine) {
+    enemy->position.x += enemy->velocity.x * ((engine_t*)vEngine)->deltaTime;
+}
+
+void _spawnEnemy(engine_t* self) {
+    if (self->currentTime > self->lastEnemySpawn + self->enemySpawnDelay) {
+        for (int eIndex=0; eIndex<ENGINE_MAX_ENEMIES; eIndex++) {
+            if (self->enemies[eIndex] == NULL) {
+
+                sprite_t* enemySprite = spriteAllocate("res/gfx/enemy.png",self->renderer);
+                enemy_t* enemy = enemyAllocate(enemySprite);
+
+                int spriteHeight = enemy->sprite->dimensions.y;
+                int spriteWidth = enemy->sprite->dimensions.x;
+
+                enemy->position.x = self->screenWidth;
+                enemy->position.y = ((rand() % self->screenHeight) - (spriteHeight*2)) + spriteHeight;
+
+                enemy->velocity.x = -0.1;
+                enemy->velocity.y = 0.0f;
+                enemy->health = 100;
+                enemy->state = ENEMY_STATE_PATH;
+                enemy->updateFunction = &_enemyLinearPath;
+                self->enemies[eIndex] = enemy;
+                self->lastEnemySpawn = self->currentTime;
+                break;
+            }
+        }
+    }
 }
 
 void _updateEnemies(engine_t* self) {
+    _spawnEnemy(self);
     // Update Enemies
     int activeEnemies = 0;
     for (int eIndex = 0; eIndex < ENGINE_MAX_ENEMIES; eIndex++) {
@@ -658,7 +720,7 @@ void _updateEnemies(engine_t* self) {
         // Not set
         if (nextEnemy == NULL) {
             continue;
-        } 
+        }
         // Out of bounds
         if (nextEnemy->position.x < 0-nextEnemy->sprite->dimensions.x*2) {
             enemyDestroy(nextEnemy);
@@ -667,7 +729,8 @@ void _updateEnemies(engine_t* self) {
         }
         // Dead
         if (nextEnemy->health <= 0) {
-            nextEnemy->state = ENEMY_STATE_DEAD;
+            _insertPopupText(self,"1000",nextEnemy->position);
+            self->player->score += 1000;
             _explodeEnemy(self,nextEnemy);
             enemyDestroy(nextEnemy);
             self->enemies[eIndex] = NULL;
@@ -677,7 +740,7 @@ void _updateEnemies(engine_t* self) {
         // Needs Update
         switch(nextEnemy->state) {
             case ENEMY_STATE_PATH:
-                nextEnemy->updateFunction(nextEnemy, self->currentTime, self->deltaTime);
+                nextEnemy->updateFunction(nextEnemy, (void*)self);
                 break;
             case  ENEMY_STATE_PUNCHED:
                 debug("Enemy Velocity %f, Decay %f\n",nextEnemy->velocity.x,nextEnemy->velocityDecay.x);
@@ -695,9 +758,9 @@ void _updateEnemies(engine_t* self) {
                 nextEnemy->position.x += nextEnemy->velocity.x * self->deltaTime;
                 //nextEnemy->position.y += nextEnemy->velocity.y * self->deltaTime;
                 break;
-        } 
+        }
 
-        projectile_t** collisions = _getProjectileOnEnemyCollisions(self, nextEnemy); 
+        projectile_t** collisions = _getProjectileOnEnemyCollisions(self, nextEnemy);
 
         for (int cIndex=0;cIndex<ENGINE_MAX_PROJECTILES;cIndex++) {
             projectile_t* collidedProjectile = collisions[cIndex];
@@ -715,17 +778,13 @@ void _updateEnemies(engine_t* self) {
             if (i >= 0) {
                 if (collidedProjectile->type == PROJECTILE_TYPE_PUNCH) {
                     whichSfx = (rand()%2)+1;
-                    nextEnemy->velocity.x = 2.0f; 
-                    nextEnemy->velocityDecay.x = 0.1; 
-                    nextEnemy->health -= 50;
+                    nextEnemy->velocity.x = 2.0f;
+                    nextEnemy->velocityDecay.x = 0.1;
+                    nextEnemy->health -= collidedProjectile->damage;
                     nextEnemy->state = ENEMY_STATE_PUNCHED;
-                    self->player->score += 500;
-                    _insertPopupText(self,"500",nextEnemy->position);
-                } else if (collidedProjectile->type == PROJECTILE_TYPE_BOOMERANG) {
-                    _insertPopupText(self,"50",nextEnemy->position);
-                    self->player->score += 50;
-                    nextEnemy->health -= 25;
-                    whichSfx = 3;
+                } else if (collidedProjectile->type == PROJECTILE_TYPE_DEFAULT) {
+                    nextEnemy->health -= collidedProjectile->damage;
+                    whichSfx = -1;
                 }
 
                 if (whichSfx >= 0) {
@@ -733,16 +792,13 @@ void _updateEnemies(engine_t* self) {
                 }
 
                 self->projectiles[i] = NULL;
-                projectileDestroy(collidedProjectile); 
+                projectileDestroy(collidedProjectile);
             }
         }
         free(collisions);
 
         // Fire a projectile if enough time has passed
-        if (SDL_GetTicks() > nextEnemy->lastProjectile + nextEnemy->projectileDelay) {
-            _insertEnemyRocketProjectile(self,nextEnemy);
-            nextEnemy->lastProjectile = SDL_GetTicks();
-        }
+        _insertEnemyRocketProjectile(self,nextEnemy);
         activeEnemies++;
     }
     info("%d active enemies\n",activeEnemies);
@@ -756,10 +812,10 @@ void _updateProjectiles(engine_t* self) {
         // Not set
         if (nextProj == NULL) {
             continue;
-        } 
+        }
         // Out of bounds
         if (
-                nextProj->position.x > self->screenWidth || 
+                nextProj->position.x > self->screenWidth ||
                 nextProj->position.x < 0-nextProj->sprite->tileDimensions.x
            ) {
             projectileDestroy(nextProj);
@@ -767,11 +823,18 @@ void _updateProjectiles(engine_t* self) {
             continue;
         }
         // Needs Update
-        nextProj->position.x += nextProj->velocity.x*self->deltaTime;
-        nextProj->position.y += nextProj->velocity.y*self->deltaTime;
+        if (nextProj->updateFunction != NULL) {
+            nextProj->updateFunction(nextProj, (void*)self);
+        }
         activeProjectiles++;
     }
     info("%d active projectiles\n",activeProjectiles);
+}
+
+void _linearProjectileUpdate(projectile_t* self, void* _engine) {
+    engine_t* engine = (engine_t*)_engine;
+    self->position.x += self->velocity.x * engine->deltaTime;
+    self->position.y += self->velocity.y * engine->deltaTime;
 }
 
 // RENDER ======================================================================
@@ -781,7 +844,7 @@ void _renderBackgrounds(engine_t* self) {
         background_t *nextBg = self->backgrounds[bgIndex];
         if (nextBg == NULL) {
             continue;
-        } 
+        }
         SDL_Rect dest;
         dest.w = nextBg->dimensions.x;
         dest.h = nextBg->dimensions.y;
@@ -792,6 +855,9 @@ void _renderBackgrounds(engine_t* self) {
 }
 
 void _renderPlayer(engine_t* self) {
+    if (self->player->state == PLAYER_STATE_DEAD) {
+        return;
+    }
     SDL_Rect playerDest;
     playerDest.w = self->player->sprite->dimensions.x;
     playerDest.h = self->player->sprite->dimensions.y;
@@ -805,7 +871,7 @@ void _renderEnemies(engine_t* self) {
         enemy_t *nextEnemy = self->enemies[eIndex];
         if (nextEnemy == NULL) {
             continue;
-        } 
+        }
         SDL_Rect *src, dest;
         src = spriteGetCurrentFrameRect(nextEnemy->sprite);
         dest.w = nextEnemy->sprite->tileDimensions.x;
@@ -825,7 +891,7 @@ void _renderTfx(engine_t* self) {
         text_t *nextTfx = self->tfx[tIndex];
         if (nextTfx == NULL) {
             continue;
-        } 
+        }
 
         SDL_Surface *surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,nextTfx->colour);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
@@ -852,7 +918,7 @@ void _renderVfx(engine_t* self) {
         vfx_t *nextVfx = self->vfx[vIndex];
         if (nextVfx == NULL) {
             continue;
-        } 
+        }
         SDL_Rect *src, dest;
         src = spriteGetCurrentFrameRect(nextVfx->sprite);
         dest.w = nextVfx->sprite->tileDimensions.x;
@@ -872,7 +938,7 @@ void _renderCollectables(engine_t* self) {
         collectable_t *nextColl = self->collectables[cIndex];
         if (nextColl == NULL) {
             continue;
-        } 
+        }
         SDL_Rect *src, dest;
         src = spriteGetCurrentFrameRect(nextColl->sprite);
         dest.w = nextColl->sprite->tileDimensions.x;
@@ -892,7 +958,7 @@ void _renderProjectiles(engine_t* self) {
         projectile_t *nextProj = self->projectiles[projIndex];
         if (nextProj == NULL) {
             continue;
-        } 
+        }
         SDL_Rect *src, dest;
         src = spriteGetCurrentFrameRect(nextProj->sprite);
         dest.w = nextProj->sprite->tileDimensions.x;
@@ -911,7 +977,6 @@ void _renderHUD(engine_t* self) {
     _renderScore(self,1);
     _renderHealth(self,2);
     _renderCoinCount(self,3);
-    _renderPunchCount(self,4);
 }
 
 void _renderScore(engine_t* self, int i) {
@@ -1028,14 +1093,40 @@ void _renderPunchCount(engine_t* self, int i) {
 
 // MISC ========================================================================
 
+void _explodePlayer(engine_t* self) {
+    for (int vIndex = 0; vIndex < ENGINE_MAX_VFX; vIndex++) {
+        if (self->vfx[vIndex] == NULL) {
+            sprite_t* expSprite = _createExplosionSprite(self);
+            vfx_t *explosion = vfxAllocate(expSprite,VFX_TYPE_PLAYER_EXPLOSION);
+
+            int xPos = (self->player->position.x+self->player->sprite->tileDimensions.x/2)-(expSprite->tileDimensions.x/2);
+            explosion->position.x = xPos;
+            int yPos = (self->player->position.y+self->player->sprite->tileDimensions.y/2)-(expSprite->tileDimensions.y/2);
+            explosion->position.y = yPos;
+
+            explosion->velocity.x = 0;//self->player->velocity.x;
+            explosion->velocity.y = 0;//self->player->velocity.y;
+            explosion->updateFunction = &_vfxLinearPath;
+
+            self->vfx[vIndex] = explosion;
+            sfxPlay(self->sfx[SFX_EXPLOSION_1]);
+
+            break;
+        }
+    }
+}
+
+
 void _explodeEnemy(engine_t* self, enemy_t* enemy) {
     for (int vIndex = 0; vIndex < ENGINE_MAX_VFX; vIndex++) {
         if (self->vfx[vIndex] == NULL) {
             sprite_t* expSprite = _createExplosionSprite(self);
             vfx_t *explosion = vfxAllocate(expSprite,VFX_TYPE_ENEMY_EXPLOSION);
 
-            explosion->position.x = enemy->position.x;
-            explosion->position.y = enemy->position.y;
+            int xPos = (enemy->position.x+enemy->sprite->tileDimensions.x/2)-(expSprite->tileDimensions.x/2);
+            explosion->position.x = xPos;
+            int yPos = (enemy->position.y+enemy->sprite->tileDimensions.y/2)-(expSprite->tileDimensions.y/2);
+            explosion->position.y = yPos;
 
             explosion->velocity.x = enemy->velocity.x;
             explosion->velocity.y = enemy->velocity.y;
@@ -1060,12 +1151,12 @@ void _explodeEnemy(engine_t* self, enemy_t* enemy) {
 projectile_t** _getProjectileOnEnemyCollisions(engine_t* engine, enemy_t* enemy) {
     projectile_t** retval = (projectile_t**)malloc(sizeof(projectile_t*)*ENGINE_MAX_PROJECTILES);
     for (int pIndex = 0; pIndex < ENGINE_MAX_PROJECTILES; pIndex++) {
-        retval[pIndex] = NULL; 
+        retval[pIndex] = NULL;
     }
 
     int collisionIndex = 0;
     for (int pIndex = 0; pIndex < ENGINE_MAX_PROJECTILES; pIndex++) {
-        projectile_t* proj = engine->projectiles[pIndex]; 
+        projectile_t* proj = engine->projectiles[pIndex];
         if (proj == NULL) {
             continue;
         }
@@ -1077,7 +1168,7 @@ projectile_t** _getProjectileOnEnemyCollisions(engine_t* engine, enemy_t* enemy)
         if (vector2iCollision(pPosition, pDimensions, ePosition, eDimensions) == 1) {
             retval[collisionIndex] = proj;
             collisionIndex++;
-        } 
+        }
     }
     return retval;
 }
@@ -1125,50 +1216,30 @@ int _setupResources(engine_t* engine) {
     engine->sfx[SFX_EXPLOSION_1] = sfxAllocate("res/sfx/explosion_1.wav", 0);
     engine->sfx[SFX_EXPLOSION_2] = sfxAllocate("res/sfx/explosion_2.wav", 0);
     engine->sfx[SFX_COIN_GET   ] = sfxAllocate("res/sfx/coin.wav", 0);
-    // Setup Enemies
-    int numEnemies = 10;
-    for (int i=0; i< numEnemies; i++) {
-        engine->enemies[i] = _createEnemy(engine,numEnemies,i);    
-    }
     // Load BGM
     engine->bgm = musicAllocate("res/bgm/japanism.wav",-1);
     musicPlay(engine->bgm);
     // HUD Elements
-    engine->scoreText   = textAllocate("res/fonts/blocked.ttf",32,20);
+    engine->scoreText   = textAllocate("res/fonts/nineteen.ttf",32,20);
 
-    engine->healthText  = textAllocate("res/fonts/blocked.ttf",32,5);
-    engine->healthSprite = spriteAllocate("res/gfx/health_icon.png",engine->renderer);
+    engine->healthText  = textAllocate("res/fonts/nineteen.ttf",32,5);
+    engine->healthSprite = spriteAllocate("res/gfx/health.png",engine->renderer);
 
-    engine->coinsText   = textAllocate("res/fonts/blocked.ttf",32,10);
+    engine->coinsText   = textAllocate("res/fonts/nineteen.ttf",32,10);
     engine->coinSprite  = spriteAllocate("res/gfx/coin_icon.png",engine->renderer);
 
-    engine->punchText   = textAllocate("res/fonts/blocked.ttf",32,10);
+    engine->punchText   = textAllocate("res/fonts/nineteen.ttf",32,10);
     engine->punchSprite = spriteAllocate("res/gfx/punch_icon.png",engine->renderer);
     // Done
     return ENGINE_OK;
 }
 
 // CREATE ======================================================================
-
-enemy_t* _createEnemy(engine_t* engine, int numEnemies, int i) {
-    sprite_t* enemySprite = spriteAllocate("res/gfx/enemy.png",engine->renderer);
-    enemy_t* enemy = enemyAllocate(enemySprite);
-    enemy->position.x = engine->screenWidth + enemy->sprite->dimensions.x*3*i;
-
-    enemy->position.y = (engine->screenHeight/2) - (enemy->sprite->dimensions.y/2);
-
-    enemy->velocity.x = -0.1; 
-    enemy->velocity.y = 0.0f;
-    enemy->health = 100;
-    enemy->state = ENEMY_STATE_PATH;
-    enemy->updateFunction = &_enemyLinearPath;
-    return enemy;
-}
-
 sprite_t* _createExplosionSprite(engine_t* engine) {
-    sprite_t* explosion = spriteAllocateSpriteSheet("res/gfx/explosion.png",66,64,13,10,engine->renderer);
+    sprite_t* explosion = spriteAllocateSpriteSheet("res/gfx/explosion_2.png",128,128,16,10,engine->renderer);
     explosion->repeat = 0;
-    // 0 
+
+    // 0
     explosion->frameOrder[0].x = 0;
     explosion->frameOrder[0].y = 0;
     // 1
@@ -1177,43 +1248,55 @@ sprite_t* _createExplosionSprite(engine_t* engine) {
     // 2
     explosion->frameOrder[2].x = 2;
     explosion->frameOrder[2].y = 0;
-    // 3 
+    // 3
     explosion->frameOrder[3].x = 3;
     explosion->frameOrder[3].y = 0;
+
     // 4
-    explosion->frameOrder[4].x = 4;
-    explosion->frameOrder[4].y = 0;
+    explosion->frameOrder[4].x = 0;
+    explosion->frameOrder[4].y = 1;
     // 5
-    explosion->frameOrder[5].x = 5;
-    explosion->frameOrder[5].y = 0;
+    explosion->frameOrder[5].x = 1;
+    explosion->frameOrder[5].y = 1;
     // 6
-    explosion->frameOrder[6].x = 6;
-    explosion->frameOrder[6].y = 0;
+    explosion->frameOrder[6].x = 2;
+    explosion->frameOrder[6].y = 1;
     // 7
-    explosion->frameOrder[7].x = 7;
-    explosion->frameOrder[7].y = 0;
+    explosion->frameOrder[7].x = 3;
+    explosion->frameOrder[7].y = 1;
+
     // 8
-    explosion->frameOrder[8].x = 8;
-    explosion->frameOrder[8].y = 0;
+    explosion->frameOrder[8].x = 0;
+    explosion->frameOrder[8].y = 2;
     // 9
-    explosion->frameOrder[9].x = 9;
-    explosion->frameOrder[9].y = 0;
+    explosion->frameOrder[9].x = 1;
+    explosion->frameOrder[9].y = 2;
     // 10
-    explosion->frameOrder[10].x = 10;
-    explosion->frameOrder[10].y = 0;
+    explosion->frameOrder[10].x = 2;
+    explosion->frameOrder[10].y = 2;
     // 11
-    explosion->frameOrder[11].x = 11;
-    explosion->frameOrder[11].y = 0;
+    explosion->frameOrder[11].x = 3;
+    explosion->frameOrder[11].y = 2;
+
     // 12
-    explosion->frameOrder[12].x = 12;
-    explosion->frameOrder[12].y = 0;
+    explosion->frameOrder[12].x = 0;
+    explosion->frameOrder[12].y = 3;
+    // 13
+    explosion->frameOrder[13].x = 1;
+    explosion->frameOrder[13].y = 3;
+    // 14
+    explosion->frameOrder[14].x = 2;
+    explosion->frameOrder[14].y = 3;
+    // 15
+    explosion->frameOrder[15].x = 3;
+    explosion->frameOrder[15].y = 3;
 
     return explosion;
 }
 
 sprite_t* _createBoomerangSprite(engine_t* engine) {
     sprite_t* boomerangSprite = spriteAllocateSpriteSheet("res/gfx/boomerang.png",32,32,8,15,engine->renderer);
-    // 0 
+    // 0
     boomerangSprite->frameOrder[7].x = 0;
     boomerangSprite->frameOrder[7].y = 0;
     // 1
@@ -1228,13 +1311,13 @@ sprite_t* _createBoomerangSprite(engine_t* engine) {
     // 4
     boomerangSprite->frameOrder[3].x = 4;
     boomerangSprite->frameOrder[3].y = 0;
-    // 5 
+    // 5
     boomerangSprite->frameOrder[2].x = 5;
     boomerangSprite->frameOrder[2].y = 0;
-    // 6 
+    // 6
     boomerangSprite->frameOrder[1].x = 6;
     boomerangSprite->frameOrder[1].y = 0;
-    // 7 
+    // 7
     boomerangSprite->frameOrder[0].x = 7;
     boomerangSprite->frameOrder[0].y = 0;
 
@@ -1255,7 +1338,7 @@ sprite_t* _createEnemyRocketSprite(engine_t* engine) {
 
 sprite_t* _createCoinSprite(engine_t* self) {
     sprite_t* coinSprite = spriteAllocateSpriteSheet("res/gfx/coin.png",30,30,6,50,self->renderer);
-    // 0 
+    // 0
     coinSprite->frameOrder[0].x = 0;
     coinSprite->frameOrder[0].y = 0;
     // 1
@@ -1270,7 +1353,7 @@ sprite_t* _createCoinSprite(engine_t* self) {
     // 4
     coinSprite->frameOrder[4].x = 4;
     coinSprite->frameOrder[4].y = 0;
-    // 5 
+    // 5
     coinSprite->frameOrder[5].x = 5;
     coinSprite->frameOrder[5].y = 0;
 
@@ -1294,31 +1377,50 @@ int _insertCoinCollectable(engine_t *self, vector2i_t pos) {
     return -1;
 }
 
-int _insertBoomerangProjectile(engine_t* self) {
+void _fireDefaultProjectile(engine_t* self) {
     // Has enough time passed
     if (SDL_GetTicks() < self->player->lastProjectile + self->player->projectileDelay) {
-        return -1;
+        return;
     }
+
+    vector2i_t pos;
+    pos.x = self->player->position.x+self->player->sprite->dimensions.x;
+
+    // Top
+    pos.y = self->player->position.y + (self->player->sprite->dimensions.y/2) - 10;
+    _insertDefaultProjectile(self,pos);
+
+    pos.y = self->player->position.y + (self->player->sprite->dimensions.y/2);
+    _insertDefaultProjectile(self,pos);
+
+    pos.y = self->player->position.y + (self->player->sprite->dimensions.y/2) + 10;
+    _insertDefaultProjectile(self,pos);
+
+}
+
+int _insertDefaultProjectile(engine_t* self,vector2i_t pos) {
     // New Projectile
     for (int projIndex = 0; projIndex < ENGINE_MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
+            //sprite_t* projectileSprite = _createDefaultSprite(self);
+            sprite_t* sprite = spriteAllocate("res/gfx/red_projectile.png",self->renderer);
 
-            sprite_t* boomerangSprite = _createBoomerangSprite(self);
-            projectile_t *boomerang = projectileAllocate(boomerangSprite);
+            projectile_t *projectile = projectileAllocate(sprite);
 
-            boomerang->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
-            boomerang->position.y = 
-                self->player->position.y + (self->player->sprite->dimensions.y/2) -
-                boomerangSprite->tileDimensions.y/2;
+            projectile->position.x = pos.x;
+            projectile->position.y = pos.y;
 
-            boomerang->velocity.x = PROJECTILE_DEFAULT_VELOCITY_X;
-            boomerang->velocity.y = PROJECTILE_DEFAULT_VELOCITY_Y;
 
-            self->projectiles[projIndex] = boomerang;
+            projectile->velocity.x = PROJECTILE_DEFAULT_VELOCITY_X;
+            projectile->velocity.y = PROJECTILE_DEFAULT_VELOCITY_Y;
+
+            self->projectiles[projIndex] = projectile;
             self->player->lastProjectile = SDL_GetTicks();
 
-            boomerang->type = PROJECTILE_TYPE_BOOMERANG; 
-            //sfxPlay(self->sfx[0]);
+            projectile->type = PROJECTILE_TYPE_DEFAULT;
+            projectile->updateFunction = &_linearProjectileUpdate;
+            projectile->damage = 2;
+
             return projIndex;
         }
     }
@@ -1327,7 +1429,7 @@ int _insertBoomerangProjectile(engine_t* self) {
 
 int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy) {
     // Fire a projectile if enough time has passed
-    if (SDL_GetTicks() < enemy->lastProjectile + enemy->projectileDelay) {
+    if (self->currentTime < enemy->lastProjectile + enemy->projectileDelay/2 + (rand() % (int)enemy->projectileDelay/2)) {
         return -1;
     }
     // New Projectile
@@ -1336,15 +1438,17 @@ int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy) {
             sprite_t* rocketSprite = _createEnemyRocketSprite(self);
             projectile_t *rocket = projectileAllocate(rocketSprite);
             rocket->position.x = enemy->position.x-enemy->sprite->dimensions.x-8;
-            rocket->position.y = 
+            rocket->position.y =
                 enemy->position.y + (enemy->sprite->dimensions.y/2) -
                 rocketSprite->tileDimensions.y/2;
-            rocket->velocity.x = -PROJECTILE_DEFAULT_VELOCITY_X/2;
-            rocket->velocity.y = -PROJECTILE_DEFAULT_VELOCITY_Y;
-            rocket->damage = 50;
+
+            rocket->velocity.x = ENEMY_ROCKET_PROJECTILE_VELOCITY_X;
+            rocket->velocity.y = ENEMY_ROCKET_PROJECTILE_VELOCITY_Y; 
+            rocket->damage = 25;
             self->projectiles[projIndex] = rocket;
-            rocket->type = PROJECTILE_TYPE_ENEMY_ROCKET; 
-            enemy->lastProjectile = SDL_GetTicks();
+            rocket->type = PROJECTILE_TYPE_ENEMY_ROCKET;
+            rocket->updateFunction = &_linearProjectileUpdate;
+            enemy->lastProjectile = self->currentTime;
             return projIndex;
         }
     }
@@ -1361,38 +1465,42 @@ int _insertPunchProjectile(engine_t* self) {
         if (self->projectiles[projIndex] == NULL) {
             sprite_t* fistSprite = spriteAllocate("res/gfx/punch.png",self->renderer);
             projectile_t *fist = projectileAllocate(fistSprite);
-            fist->position.x = self->player->position.x+self->player->sprite->dimensions.x+8;
-            fist->position.y = 
+            fist->position.x = self->player->position.x+self->player->sprite->dimensions.x;
+            fist->position.y =
                 self->player->position.y + (self->player->sprite->dimensions.y/2) -
                 fistSprite->tileDimensions.y/2;
-            fist->velocity.x = PROJECTILE_DEFAULT_VELOCITY_X;
-            fist->velocity.y = PROJECTILE_DEFAULT_VELOCITY_Y;
-            fist->type = PROJECTILE_TYPE_PUNCH; 
+            fist->velocity.x = PROJECTILE_PUNCH_VELOCITY_X;
+            fist->velocity.y = PROJECTILE_PUNCH_VELOCITY_Y;
+            fist->type = PROJECTILE_TYPE_PUNCH;
+            fist->updateFunction = &_linearProjectileUpdate;
+            fist->damage = 1000;
             self->projectiles[projIndex] = fist;
             self->player->lastPunch = SDL_GetTicks();
             self->player->numPunches--;
+            self->player->numCoins -= PROJECTILE_PUNCH_COST;
             return projIndex;
         }
     }
     return -1;
 }
 
-void _popupTextFloat(text_t* self, float currentTime, float deltaTime) {
+void _popupTextFloat(text_t* self, void *vEngine) {
     if (self != NULL) {
-        self->position.y -= 0.5f*deltaTime;
-        int alphaDec = 25;
+        engine_t* engine = (engine_t*)vEngine;
+        self->position.y -= 0.25f*engine->deltaTime;
+        int alphaDec = 5;
         if (self->colour.a > alphaDec)  {
             self->colour.a -= alphaDec;
         } else {
             self->colour.a = 0;
         }
-    }    
+    }
 }
 
 int _insertPopupText(engine_t* self, char* text, vector2i_t position) {
     for (int tIndex=0; tIndex<ENGINE_MAX_TFX; tIndex++) {
         if (self->tfx[tIndex] == NULL) {
-            text_t* tfx = textAllocate("res/fonts/lcd.ttf",24,strlen(text)+1);
+            text_t* tfx = textAllocate("res/fonts/nineteen.ttf",32,strlen(text)+1);
             if (tfx != NULL) {
                 snprintf(tfx->text,tfx->bufferSize,"%s",text);
                 tfx->position = position;

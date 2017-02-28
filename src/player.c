@@ -25,7 +25,7 @@ player_t* playerAllocate(sprite_t* sprite) {
 
     p->punchDelay = PROJECTILE_DEFAULT_PUNCH_DELAY;
     p->lastPunch = 0.0f;
-
+    p->state = PLAYER_STATE_ALIVE;
 
     return p;
 }

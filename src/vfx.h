@@ -12,7 +12,7 @@ struct vfx {
     vector2i_t  position;
     vector2f_t  velocity;
     // Path update function
-    void (*updateFunction )(vfx_t* self, float currentTime, float deltaTime);
+    void (*updateFunction )(vfx_t *self, void *vEngine);
 };
 
 vfx_t *vfxAllocate(sprite_t* sprite, char type);

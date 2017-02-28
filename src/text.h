@@ -13,7 +13,7 @@ struct text {
     char      *text;
     int        bufferSize;
     TTF_Font  *font;
-    void (*updateFunction )(text_t* enemy, float currentTime, float deltaTime);
+    void (*updateFunction )(text_t* enemy, void *vEngine);
 };
 
 text_t *textAllocate(char *fontPath, int size, int bufferSize);

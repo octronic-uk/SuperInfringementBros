@@ -30,6 +30,8 @@ struct engine {
     float currentTime;
     float lastTime;
     float deltaTime;
+    float lastEnemySpawn;
+    float enemySpawnDelay;
     // Engine functions
     int (*inputFunction )(engine_t*);
     int (*renderFunction)(engine_t*);
@@ -87,16 +89,16 @@ sprite_t* _createBoomerangSprite(engine_t* engine);
 sprite_t* _createEnemyRocketSprite(engine_t* engine);
 sprite_t* _createCoinSprite(engine_t* engine);
 sprite_t* _createExplosionSprite(engine_t* engine);
-enemy_t*  _createEnemy(engine_t* engine, int numEnemies, int i);
+
+void _fireDefaultProjectile(engine_t* self);
 
 // Insert: Insert into runtime ...
 int _insertPopupText(engine_t* self, char* text, vector2i_t position);
 int _insertPunchProjectile(engine_t* self);
-int _insertBoomerangProjectile(engine_t* self);
+int _insertDefaultProjectile(engine_t* self,vector2i_t pos);
 int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
 int _insertCoinCollectable(engine_t *self, vector2i_t pos);
 
-void _explodeEnemy(engine_t* self, enemy_t* enemy);
 
 // Render
 void _renderBackgrounds(engine_t* self);
@@ -123,5 +125,8 @@ void _updateTfx(engine_t* self);
 void _updateCollectables(engine_t *self);
 
 projectile_t**  _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
+void _explodePlayer(engine_t* self);
+void _explodeEnemy(engine_t* self, enemy_t* enemy);
+void _spawnEnemy(engine_t* self);
 
 #endif // ENGINE_H

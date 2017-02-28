@@ -2,6 +2,7 @@ project(SuperInfringementBros C)
 cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 SET(CMAKE_MODULE_PATH "${SuperInfringementBros_SOURCE_DIR}/CMakeModules")
 message("Using modules path: " ${CMAKE_MODULE_PATH})

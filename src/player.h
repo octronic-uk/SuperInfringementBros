@@ -14,6 +14,7 @@ typedef struct {
     int score;
     int numCoins;
     int numPunches;
+    char state;
     // Projectlie Vars
     float lastProjectile;
     float projectileDelay;
