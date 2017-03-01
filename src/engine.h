@@ -26,6 +26,7 @@ struct engine {
     SDL_Window   *window;
     SDL_Renderer *renderer;
     SDL_Event    *event;
+    SDL_Joystick *joystick;
     // Timing
     float currentTime;
     float lastTime;

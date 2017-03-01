@@ -7,6 +7,7 @@ engine_t* engineAllocate() {
     debug("Allocating new engine_t\n");
     engine_t* engine = (engine_t*)malloc(sizeof(engine_t));
     engine->event    = (SDL_Event*)malloc(sizeof(SDL_Event));
+    engine->joystick = NULL;
 
     // Malloc Backgrounds Array
     engine->backgrounds = (background_t**)malloc(sizeof(background_t*)*ENGINE_MAX_BACKGROUNDS);
@@ -113,7 +114,7 @@ int engineInit(engine_t* self, int width, int height, char* title) {
 }
 
 int engineInitSDL(engine_t* self) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK) != 0){
         error("Engine: SDL_Init Error = %s\n" , SDL_GetError());
         return ENGINE_ERROR;
     }
@@ -148,16 +149,31 @@ int engineInitSDL(engine_t* self) {
         SDL_Quit();
         return ENGINE_ERROR;
     }
+
+    debug("Joysticks Connected: %d\n",SDL_NumJoysticks());
+
+    if (SDL_NumJoysticks() > 0) {
+        self->joystick = SDL_JoystickOpen(0);
+        if (self->joystick == NULL) {
+            error("Error opening joystick %s\n",SDL_GetError());
+        }
+    }
     return ENGINE_OK;
 }
 
 void engineDestroySDL(engine_t* self) {
     // Delete SDL Objects
+    if (self->joystick != NULL) {
+        SDL_JoystickClose(self->joystick);
+        self->joystick = NULL;
+    }
     if (self->renderer != NULL) {
         SDL_DestroyRenderer(self->renderer);
+        self->renderer = NULL;
     }
     if (self->window != NULL) {
         SDL_DestroyWindow(self->window);
+        self->window = NULL;
     }
 }
 
@@ -348,63 +364,138 @@ int engineLoop(engine_t* self) {
 }
 
 int engineDefaultInputHandler(engine_t* self) {
-    SDL_PollEvent(self->event);
-    if (self->event->type == SDL_QUIT) {
-        return ENGINE_QUIT;
-    } else if (self->event->type == SDL_KEYDOWN) {
-        switch (self->event->key.keysym.sym) {
-            case SDLK_UP:
-                self->upPressed = 1;
-                break;
-            case SDLK_DOWN:
-                self->downPressed = 1;
-                break;
-            case SDLK_LEFT:
-                self->leftPressed = 1;
-                break;
-            case SDLK_RIGHT:
-                self->rightPressed = 1;
-                break;
-            case SDLK_a:
-                self->fire1BtnPressed = 1;
-                break;
-            case SDLK_s:
-                self->fire2BtnPressed = 1;
-                break;
-            case SDLK_d:
-                self->weaponBtnPressed = 1;
-                break;
-            case SDLK_f:
-                self->buyBtnPressed = 1;
-                break;
-        }
-    } else if (self->event->type == SDL_KEYUP) {
-        // KeyUp
-        switch (self->event->key.keysym.sym) {
-            case SDLK_UP:
-                self->upPressed = 0;
-                break;
-            case SDLK_DOWN:
-                self->downPressed = 0;
-                break;
-            case SDLK_LEFT:
-                self->leftPressed = 0;
-                break;
-            case SDLK_RIGHT:
-                self->rightPressed = 0;
-                break;
-            case SDLK_a:
-                self->fire1BtnPressed = 0;
-                break;
-            case SDLK_s:
-                self->fire2BtnPressed = 0;
-                break;
-            case SDLK_d:
-                self->weaponBtnPressed = 0;
-                break;
-            case SDLK_f:
-                self->buyBtnPressed = 0;
-                break;
+    while(SDL_PollEvent(self->event)) {
+        if (self->event->type == SDL_QUIT) {
+            return ENGINE_QUIT;
+        } else if (self->event->type == SDL_KEYDOWN) {
+            switch (self->event->key.keysym.sym) {
+                case SDLK_UP:
+                    self->upPressed = 1;
+                    break;
+                case SDLK_DOWN:
+                    self->downPressed = 1;
+                    break;
+                case SDLK_LEFT:
+                    self->leftPressed = 1;
+                    break;
+                case SDLK_RIGHT:
+                    self->rightPressed = 1;
+                    break;
+                case SDLK_a:
+                    self->fire1BtnPressed = 1;
+                    break;
+                case SDLK_s:
+                    self->fire2BtnPressed = 1;
+                    break;
+                case SDLK_d:
+                    self->weaponBtnPressed = 1;
+                    break;
+                case SDLK_f:
+                    self->buyBtnPressed = 1;
+                    break;
+            }
+        } else if (self->event->type == SDL_KEYUP) {
+            // KeyUp
+            switch (self->event->key.keysym.sym) {
+                case SDLK_UP:
+                    self->upPressed = 0;
+                    break;
+                case SDLK_DOWN:
+                    self->downPressed = 0;
+                    break;
+                case SDLK_LEFT:
+                    self->leftPressed = 0;
+                    break;
+                case SDLK_RIGHT:
+                    self->rightPressed = 0;
+                    break;
+                case SDLK_a:
+                    self->fire1BtnPressed = 0;
+                    break;
+                case SDLK_s:
+                    self->fire2BtnPressed = 0;
+                    break;
+                case SDLK_d:
+                    self->weaponBtnPressed = 0;
+                    break;
+                case SDLK_f:
+                    self->buyBtnPressed = 0;
+                    break;
+            }
+        }  else if (self->event->type == SDL_JOYAXISMOTION) {
+            // X
+            if (self->event->jaxis.axis == 0) {
+                if (self->event->jaxis.value < -8000) {
+                    self->leftPressed = 1;
+                    self->rightPressed = 0;
+
+                } else if (self->event->jaxis.value > 8000) {
+                    self->leftPressed = 0;
+                    self->rightPressed = 1;
+
+                } else {
+                    self->leftPressed = 0;
+                    self->rightPressed = 0;
+                }
+            }
+            // Y
+            else if (self->event->jaxis.axis == 1) {
+                if (self->event->jaxis.value < -8000) {
+                    self->upPressed = 1;
+                    self->downPressed = 0;
+
+                } else if (self->event->jaxis.value > 8000) {
+                    self->upPressed = 0;
+                    self->downPressed = 1;
+
+                } else {
+                    self->upPressed = 0;
+                    self->downPressed = 0;
+                }
+            }
+        } else if (self->event->type == SDL_JOYHATMOTION) {
+            switch (self->event->jhat.value) {
+                case SDL_HAT_UP:
+                    self->upPressed   = 1;
+                    self->downPressed = 0;
+                    break;
+                case SDL_HAT_DOWN:
+                    self->upPressed   = 0;
+                    self->downPressed = 1;
+                    break;
+                case SDL_HAT_LEFT:
+                    self->leftPressed  = 1;
+                    self->rightPressed = 0;
+                    break;
+                case SDL_HAT_RIGHT:
+                    self->leftPressed  = 0;
+                    self->rightPressed = 1;
+                    break;
+                case SDL_HAT_CENTERED:
+                    self->upPressed    = 0;
+                    self->downPressed  = 0;
+                    self->leftPressed  = 0;
+                    self->rightPressed = 0;
+                    break;
+            }
+        } else if (self->event->type == SDL_JOYBUTTONDOWN) {
+            switch(self->event->jbutton.button) {
+                case 0:
+                    self->fire1BtnPressed = 1;
+                    break;
+                case 1:
+                    self->fire2BtnPressed = 1;
+                    break;
+            }
+        } else if (self->event->type == SDL_JOYBUTTONUP) {
+            switch(self->event->jbutton.button) {
+                case 0:
+                    self->fire1BtnPressed = 0;
+                    break;
+                case 1:
+                    self->fire2BtnPressed = 0;
+                    break;
+            }
         }
     }
     return ENGINE_OK;
@@ -696,7 +787,7 @@ void _spawnEnemy(engine_t* self) {
                 int spriteWidth = enemy->sprite->dimensions.x;
 
                 enemy->position.x = self->screenWidth;
-                enemy->position.y = ((rand() % self->screenHeight) - (spriteHeight*2)) + spriteHeight;
+                enemy->position.y = rand() % (self->screenHeight - spriteHeight*2) + spriteHeight;
 
                 enemy->velocity.x = -0.1;
                 enemy->velocity.y = 0.0f;
@@ -887,13 +978,23 @@ void _renderEnemies(engine_t* self) {
 }
 
 void _renderTfx(engine_t* self) {
+    
     for (int tIndex=0; tIndex < ENGINE_MAX_TFX; tIndex++) {
+
         text_t *nextTfx = self->tfx[tIndex];
         if (nextTfx == NULL) {
             continue;
         }
 
-        SDL_Surface *surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,nextTfx->colour);
+        SDL_Color black;
+        black.r = 0;
+        black.g = 0;
+        black.b = 0;
+        black.a = nextTfx->colour.a;
+       
+        // Stroke
+        TTF_SetFontOutline(nextTfx->font, 4);
+        SDL_Surface *surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,black);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         SDL_SetTextureAlphaMod(texture,nextTfx->colour.a);
         if (texture == NULL){
@@ -910,6 +1011,24 @@ void _renderTfx(engine_t* self) {
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
+        // Text
+        TTF_SetFontOutline(nextTfx->font, 0);
+        surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,nextTfx->colour);
+        texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        SDL_SetTextureAlphaMod(texture,nextTfx->colour.a);
+        if (texture == NULL){
+            error("Error: Could not create tfx texture\n");
+            return;
+        }
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        dest.x = nextTfx->position.x;
+        dest.y = nextTfx->position.y;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+
     }
 }
 
@@ -981,8 +1100,15 @@ void _renderHUD(engine_t* self) {
 
 void _renderScore(engine_t* self, int i) {
     if (self->scoreText != NULL) {
+        SDL_Color black;
+        black.r = 0;
+        black.g = 0;
+        black.b = 0;
+        black.a = 0;
+        // Stroke
+        TTF_SetFontOutline(self->scoreText->font, 4);
         snprintf(self->scoreText->text,self->scoreText->bufferSize, "%.6d",self->player->score);
-        SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,black);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
             error("Error: Could not create score texture\n");
@@ -998,14 +1124,36 @@ void _renderScore(engine_t* self, int i) {
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
+        // Text
+        TTF_SetFontOutline(self->scoreText->font, 0);
+        surface = TTF_RenderText_Solid(self->scoreText->font,self->scoreText->text,self->scoreText->colour);
+        texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            error("Error: Could not create score texture\n");
+            return;
+        }
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*1) - (iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
     }
 }
 
 void _renderHealth(engine_t* self, int i) {
     if (self->healthText != NULL && self->healthSprite != NULL) {
-        // Text
+        SDL_Color black;
+        black.r = 0;
+        black.g = 0;
+        black.b = 0;
+        black.a = 0;
+        TTF_SetFontOutline(self->healthText->font, 4);
+        //Stroke 
         snprintf(self->healthText->text, self->healthText->bufferSize, "%.3d",self->player->health);
-        SDL_Surface *surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, self->healthText->colour);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, black);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
             error("Error: Could not create coins text texture\n");
@@ -1021,6 +1169,24 @@ void _renderHealth(engine_t* self, int i) {
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
+
+        // Text
+        TTF_SetFontOutline(self->healthText->font, 0);
+        surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, self->healthText->colour);
+        texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            error("Error: Could not create coins text texture\n");
+            return;
+        }
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+
         // Sprite
         src = spriteGetCurrentFrameRect(self->healthSprite);
         dest.w = self->healthSprite->tileDimensions.x;
@@ -1033,9 +1199,15 @@ void _renderHealth(engine_t* self, int i) {
 
 void _renderCoinCount(engine_t* self, int i) {
     if (self->coinsText != NULL && self->coinSprite != NULL) {
-        // Text
+        SDL_Color black;
+        black.r = 0;
+        black.g = 0;
+        black.b = 0;
+        black.a = 0;
+        // Stroke
+        TTF_SetFontOutline(self->coinsText->font, 4);
         snprintf(self->coinsText->text, self->coinsText->bufferSize, "%.3d",self->player->numCoins);
-        SDL_Surface *surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, self->coinsText->colour);
+        SDL_Surface *surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, black);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
         if (texture == NULL){
             error("Error: Could not create coins text texture\n");
@@ -1044,6 +1216,23 @@ void _renderCoinCount(engine_t* self, int i) {
         int iW, iH;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest, *src;
+        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
+        dest.y = self->screenHeight-iH-5;
+        dest.w = iW;
+        dest.h = iH;
+        SDL_RenderCopy(self->renderer, texture, NULL, &dest);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+        // Text
+        TTF_SetFontOutline(self->coinsText->font, 0);
+        snprintf(self->coinsText->text, self->coinsText->bufferSize, "%.3d",self->player->numCoins);
+        surface = TTF_RenderText_Solid(self->coinsText->font, self->coinsText->text, self->coinsText->colour);
+        texture = SDL_CreateTextureFromSurface(self->renderer, surface);
+        if (texture == NULL){
+            error("Error: Could not create coins text texture\n");
+            return;
+        }
+        SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
@@ -1220,15 +1409,15 @@ int _setupResources(engine_t* engine) {
     engine->bgm = musicAllocate("res/bgm/japanism.wav",-1);
     musicPlay(engine->bgm);
     // HUD Elements
-    engine->scoreText   = textAllocate("res/fonts/nineteen.ttf",32,20);
+    engine->scoreText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,20);
 
-    engine->healthText  = textAllocate("res/fonts/nineteen.ttf",32,5);
+    engine->healthText  = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,5);
     engine->healthSprite = spriteAllocate("res/gfx/health.png",engine->renderer);
 
-    engine->coinsText   = textAllocate("res/fonts/nineteen.ttf",32,10);
+    engine->coinsText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,10);
     engine->coinSprite  = spriteAllocate("res/gfx/coin_icon.png",engine->renderer);
 
-    engine->punchText   = textAllocate("res/fonts/nineteen.ttf",32,10);
+    engine->punchText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,10);
     engine->punchSprite = spriteAllocate("res/gfx/punch_icon.png",engine->renderer);
     // Done
     return ENGINE_OK;
@@ -1419,7 +1608,7 @@ int _insertDefaultProjectile(engine_t* self,vector2i_t pos) {
 
             projectile->type = PROJECTILE_TYPE_DEFAULT;
             projectile->updateFunction = &_linearProjectileUpdate;
-            projectile->damage = 2;
+            projectile->damage = 5;
 
             return projIndex;
         }
@@ -1500,13 +1689,13 @@ void _popupTextFloat(text_t* self, void *vEngine) {
 int _insertPopupText(engine_t* self, char* text, vector2i_t position) {
     for (int tIndex=0; tIndex<ENGINE_MAX_TFX; tIndex++) {
         if (self->tfx[tIndex] == NULL) {
-            text_t* tfx = textAllocate("res/fonts/nineteen.ttf",32,strlen(text)+1);
+            text_t* tfx = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,strlen(text)+1);
             if (tfx != NULL) {
                 snprintf(tfx->text,tfx->bufferSize,"%s",text);
                 tfx->position = position;
                 tfx->colour.r = 255;
-                tfx->colour.g = 0;
-                tfx->colour.b = 0;
+                tfx->colour.g = 255;
+                tfx->colour.b = 255;
                 tfx->colour.a = 255;
                 tfx->updateFunction = &_popupTextFloat;
                 self->tfx[tIndex] = tfx;
