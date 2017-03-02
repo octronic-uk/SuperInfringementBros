@@ -63,6 +63,7 @@ struct engine {
     char pauseBtnPressed;
     char fire1BtnPressed;
     char fire2BtnPressed;
+    char startPressed;
     char buyBtnPressed;
     char weaponBtnPressed;
 };
@@ -80,6 +81,10 @@ void engineDestroySDL(engine_t* self);
 int  engineInitSDL(engine_t* self);
 void engineCloseSDL(engine_t* self);
 
+void engineRemoveAllProjectiles(engine_t* self);
+void engineRemoveAllCollectables(engine_t* self) ;
+void engineRemoveAllEnemies(engine_t* self);
+
 // 'Private' Functions 
 
 // Setup/Init
@@ -90,6 +95,8 @@ sprite_t* _createBoomerangSprite(engine_t* engine);
 sprite_t* _createEnemyRocketSprite(engine_t* engine);
 sprite_t* _createCoinSprite(engine_t* engine);
 sprite_t* _createExplosionSprite(engine_t* engine);
+sprite_t* _createRGBYSprite(engine_t* self);
+sprite_t* _createLemonSprite(engine_t* self);
 
 void _fireDefaultProjectile(engine_t* self);
 
@@ -97,8 +104,9 @@ void _fireDefaultProjectile(engine_t* self);
 int _insertPopupText(engine_t* self, char* text, vector2i_t position);
 int _insertPunchProjectile(engine_t* self);
 int _insertDefaultProjectile(engine_t* self,vector2i_t pos);
-int _insertEnemyRocketProjectile(engine_t* self, enemy_t* enemy);
+int _insertEnemyProjectile(engine_t* self, enemy_t* enemy);
 int _insertCoinCollectable(engine_t *self, vector2i_t pos);
+int _insertHealthCollectable(engine_t *self, vector2i_t pos);
 
 
 // Render
@@ -114,7 +122,6 @@ void _renderHUD(engine_t *self);
 void _renderScore(engine_t* self, int i);
 void _renderHealth(engine_t* self, int i);
 void _renderCoinCount(engine_t* self, int i);
-void _renderPunchCount(engine_t* self, int i);
 
 // Update 
 void _updateBackgrounds(engine_t* self);
@@ -129,5 +136,12 @@ projectile_t**  _getProjectileOnEnemyCollisions(engine_t* self, enemy_t* enemy);
 void _explodePlayer(engine_t* self);
 void _explodeEnemy(engine_t* self, enemy_t* enemy);
 void _spawnEnemy(engine_t* self);
+void _linearProjectileUpdate(projectile_t* self, void* _engine);
+
+
+void _saucerFireProjectileFunction(enemy_t* enemy, void* _engine);
+void _icyFireProjectileFunction(enemy_t* enemy, void* _engine);
+void _blobFireProjectileFunction(enemy_t* enemy, void* _engine);
+void _rockFireProjectileFunction(enemy_t* enemy, void* _engine);
 
 #endif // ENGINE_H

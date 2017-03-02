@@ -12,6 +12,7 @@ struct projectile{
     vector2f_t velocity;
     char type;
     int damage;
+    int collisions;
     void (*updateFunction)(projectile_t* self, void* engine);
 };
 

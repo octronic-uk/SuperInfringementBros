@@ -12,6 +12,7 @@ projectile_t* projectileAllocate(sprite_t* sprite) {
     self->type = 0;
     self->damage = 0;
     self->updateFunction = NULL;
+    self->collisions = 0;
     return self;
 }
 

@@ -17,6 +17,7 @@ struct enemy {
     float spawnTime;
     // Path update function
     void (*updateFunction )(enemy_t *enemy, void *_engine);
+    void (*fireProjectileFunction )(enemy_t *enemy, void *_engine);
 };
 
 enemy_t* enemyAllocate(sprite_t* sprite);
