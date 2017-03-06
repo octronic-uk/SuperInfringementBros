@@ -20,6 +20,12 @@
 #define SFX_COIN_GET    6
 #define SFX_HEALTH_GET  7
 
+#define SFX_COMBO_1 8
+#define SFX_COMBO_2 9
+#define SFX_COMBO_3 10
+#define SFX_COMBO_4 11
+#define SFX_COMBO_5 12
+
 
 #define ENGINE_ERROR           -1
 #define ENGINE_OK               0
@@ -31,6 +37,14 @@
 #define ENGINE_MAX_TFX          50
 #define ENGINE_NUM_HUD_ELEMENTS 3 
 #define ENGINE_MAX_ENEMIES      50
+
+// States
+#define ENGINE_STATE_ERROR    -1
+#define ENGINE_STATE_NONE      -1
+#define ENGINE_STATE_TITLE     1
+#define ENGINE_STATE_GAME      2
+#define ENGINE_STATE_HIGHSCORE 3
+#define ENGINE_STATE_MENU      4
 
 
 #define PROJECTILE_PUNCH_VELOCITY_X    1.0f

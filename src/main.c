@@ -1,27 +1,28 @@
 #include <SDL2/SDL.h>
 
+#include "game.h"
+#include "title.h"
+#include "high_score.h"
+#include "menu.h"
+
 #include "engine.h"
+
 #include "constants.h"
 #include "logger.h"
 
  int main(int argc, char** argv) {
-    int retval = 0;
     // Init & Setup
     engine_t *engine = engineAllocate();
-    engine->debug = 0;
-    int initResult = engineInit(engine,1280 ,720, "SuperInfringementBros!");
+    int initResult = engineInit(engine, 1280 ,720, "SuperInfringementBros!");
 
-    if (initResult != 0) {
+    if (initResult == ENGINE_ERROR) {
         error("Engine init failed\n");
-        return ENGINE_ERROR;
+        return 1;
     }
-
-    // Set engine methods
-    engine->inputFunction  = &engineDefaultInputHandler;
-    engine->updateFunction = &engineDefaultUpdateHandler;
-    engine->renderFunction = &engineDefaultRenderHandler;
+    // Set title state
+    engineSetState(engine,ENGINE_STATE_GAME);
     // Run
-    retval = engineLoop(engine);
+    int retval = engineLoop(engine);
     // Cleanup
     engineDestroy(engine);
     return retval;
