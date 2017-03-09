@@ -131,150 +131,6 @@ int gameCleanupHandler(engine_t* self) {
     return ENGINE_OK;
 }
 
-int gameInputHandler(engine_t* self) {
-    while(SDL_PollEvent(self->event)) {
-        if (self->event->type == SDL_QUIT) {
-            return ENGINE_QUIT;
-        } else if (self->event->type == SDL_KEYDOWN) {
-            switch (self->event->key.keysym.sym) {
-                case SDLK_UP:
-                    self->upPressed = 1;
-                    break;
-                case SDLK_DOWN:
-                    self->downPressed = 1;
-                    break;
-                case SDLK_LEFT:
-                    self->leftPressed = 1;
-                    break;
-                case SDLK_RIGHT:
-                    self->rightPressed = 1;
-                    break;
-                case SDLK_a:
-                    self->fire1BtnPressed = 1;
-                    break;
-                case SDLK_s:
-                    self->fire2BtnPressed = 1;
-                    break;
-                case SDLK_d:
-                    self->weaponBtnPressed = 1;
-                    break;
-                case SDLK_f:
-                    self->buyBtnPressed = 1;
-                    break;
-            }
-        } else if (self->event->type == SDL_KEYUP) {
-            // KeyUp
-            switch (self->event->key.keysym.sym) {
-                case SDLK_UP:
-                    self->upPressed = 0;
-                    break;
-                case SDLK_DOWN:
-                    self->downPressed = 0;
-                    break;
-                case SDLK_LEFT:
-                    self->leftPressed = 0;
-                    break;
-                case SDLK_RIGHT:
-                    self->rightPressed = 0;
-                    break;
-                case SDLK_a:
-                    self->fire1BtnPressed = 0;
-                    break;
-                case SDLK_s:
-                    self->fire2BtnPressed = 0;
-                    break;
-                case SDLK_d:
-                    self->weaponBtnPressed = 0;
-                    break;
-                case SDLK_f:
-                    self->buyBtnPressed = 0;
-                    break;
-            }
-        }  else if (self->event->type == SDL_JOYAXISMOTION) {
-            // X
-            if (self->event->jaxis.axis == 0) {
-                if (self->event->jaxis.value < -8000) {
-                    self->leftPressed = 1;
-                    self->rightPressed = 0;
-
-                } else if (self->event->jaxis.value > 8000) {
-                    self->leftPressed = 0;
-                    self->rightPressed = 1;
-
-                } else {
-                    self->leftPressed = 0;
-                    self->rightPressed = 0;
-                }
-            }
-            // Y
-            else if (self->event->jaxis.axis == 1) {
-                if (self->event->jaxis.value < -8000) {
-                    self->upPressed = 1;
-                    self->downPressed = 0;
-
-                } else if (self->event->jaxis.value > 8000) {
-                    self->upPressed = 0;
-                    self->downPressed = 1;
-
-                } else {
-                    self->upPressed = 0;
-                    self->downPressed = 0;
-                }
-            }
-        } else if (self->event->type == SDL_JOYHATMOTION) {
-            switch (self->event->jhat.value) {
-                case SDL_HAT_UP:
-                    self->upPressed   = 1;
-                    self->downPressed = 0;
-                    break;
-                case SDL_HAT_DOWN:
-                    self->upPressed   = 0;
-                    self->downPressed = 1;
-                    break;
-                case SDL_HAT_LEFT:
-                    self->leftPressed  = 1;
-                    self->rightPressed = 0;
-                    break;
-                case SDL_HAT_RIGHT:
-                    self->leftPressed  = 0;
-                    self->rightPressed = 1;
-                    break;
-                case SDL_HAT_CENTERED:
-                    self->upPressed    = 0;
-                    self->downPressed  = 0;
-                    self->leftPressed  = 0;
-                    self->rightPressed = 0;
-                    break;
-            }
-        } else if (self->event->type == SDL_JOYBUTTONDOWN) {
-            switch(self->event->jbutton.button) {
-                case 0:
-                    self->fire1BtnPressed = 1;
-                    break;
-                case 1:
-                    self->fire2BtnPressed = 1;
-                    break;
-                case 8:
-                    self->startPressed = 1;
-                    break;
-            }
-        } else if (self->event->type == SDL_JOYBUTTONUP) {
-            switch(self->event->jbutton.button) {
-                case 0:
-                    self->fire1BtnPressed = 0;
-                    break;
-                case 1:
-                    self->fire2BtnPressed = 0;
-                    break;
-                case 8:
-                    self->startPressed = 0;
-                    break;
-            }
-        }
-    }
-    return ENGINE_OK;
-}
-
 int gameUpdateHandler(engine_t* self) {
     info("DeltaTime: %.2fms\n",self->deltaTime);
     gameUpdateBackgrounds(self);
@@ -290,7 +146,6 @@ int gameUpdateHandler(engine_t* self) {
 
 int gameRenderHandler(engine_t* self) {
     // Clear
-    SDL_RenderClear(self->renderer);
     gameRenderBackgrounds(self);
     gameRenderPlayer(self);
     gameRenderEnemies(self);
@@ -299,7 +154,6 @@ int gameRenderHandler(engine_t* self) {
     gameRenderCollectables(self);
     gameRenderTfx(self);
     gameRenderHUD(self);
-    SDL_RenderPresent(self->renderer);
     return ENGINE_OK;
 }
 
@@ -349,19 +203,19 @@ int gameSetupHandler(engine_t* engine) {
     engine->sfx[SFX_HEALTH_GET ] = sfxAllocate("res/sfx/health.wav", 0);
 
     // Load BGM
-    //engine->bgm = musicAllocate("res/bgm/guile.wav",-1);
-    engine->bgm = musicAllocate("res/bgm/world_bowser.wav",-1);
+    engine->bgm = musicAllocate("res/bgm/guile.wav",-1);
+    //engine->bgm = musicAllocate("res/bgm/world_bowser.wav",-1);
     musicPlay(engine->bgm);
     // HUD Elements
-    engine->scoreText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,20);
+    engine->scoreText   = textAllocate("res/fonts/nineteen.ttf",DEFAULT_FONT_SIZE,20);
 
-    engine->healthText  = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,5);
+    engine->healthText  = textAllocate("res/fonts/nineteen.ttf",DEFAULT_FONT_SIZE,5);
     engine->healthSprite = spriteAllocate("res/gfx/health.png",engine->renderer);
 
-    engine->coinsText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,10);
+    engine->coinsText   = textAllocate("res/fonts/nineteen.ttf",DEFAULT_FONT_SIZE,10);
     engine->coinSprite  = spriteAllocate("res/gfx/coin_icon.png",engine->renderer);
 
-    engine->punchText   = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,10);
+    engine->punchText   = textAllocate("res/fonts/nineteen.ttf",DEFAULT_FONT_SIZE,10);
     engine->punchSprite = spriteAllocate("res/gfx/punch_icon.png",engine->renderer);
     // Done
     return ENGINE_OK;
@@ -521,10 +375,10 @@ void gameUpdatePlayer(engine_t* self) {
             }
         }
 
-        if (self->fire1BtnPressed == 1) {
+        if (self->btn1Pressed == 1) {
             gameFireDefaultProjectile(self);
         }
-        if (self->fire2BtnPressed == 1) {
+        if (self->btn2Pressed == 1) {
             if (self->player->numCoins >= PROJECTILE_PUNCH_COST) {
                 gameInsertPunchProjectile(self);
             }
@@ -650,7 +504,7 @@ void gameRockFireProjectileFunction(enemy_t* enemy, void* _engine) {
     // New Projectile
     for (int projIndex = 0; projIndex < ENGINE_MAX_PROJECTILES; projIndex++) {
         if (self->projectiles[projIndex] == NULL) {
-            sprite_t* rocketSprite = gameCreateEnemyRocketSprite(self);
+            sprite_t* rocketSprite = gameCreateYinYangSprite(self);
             projectile_t *rocket = projectileAllocate(rocketSprite);
             rocket->position.x = enemy->position.x;
             rocket->position.y = enemy->position.y + (enemy->sprite->dimensions.y/2) - rocketSprite->tileDimensions.y/2;
@@ -700,6 +554,34 @@ sprite_t* gameCreateRGBYSprite(engine_t* self) {
     return proj;
 }
 
+sprite_t* gameCreateYinYangSprite(engine_t* self) {
+    sprite_t* proj = spriteAllocateSpriteSheet("res/gfx/blue_red_proj.png",32,32,8,25,self->renderer);
+    proj->frameOrder[0].x = 0;
+    proj->frameOrder[0].y = 0;
+
+    proj->frameOrder[1].x = 1;
+    proj->frameOrder[1].y = 0;
+
+    proj->frameOrder[2].x = 2;
+    proj->frameOrder[2].y = 0;
+
+    proj->frameOrder[3].x = 3;
+    proj->frameOrder[3].y = 0;
+
+    proj->frameOrder[4].x = 4;
+    proj->frameOrder[4].y = 0;
+
+    proj->frameOrder[5].x = 5;
+    proj->frameOrder[5].y = 0;
+
+    proj->frameOrder[6].x = 6;
+    proj->frameOrder[6].y = 0;
+
+    proj->frameOrder[7].x = 7;
+    proj->frameOrder[7].y = 0;
+    return proj;
+}
+
 void gameBlobFireProjectileFunction(enemy_t* enemy, void* _engine) { 
     engine_t* self = (engine_t*) _engine;
     // New Projectile
@@ -711,7 +593,15 @@ void gameBlobFireProjectileFunction(enemy_t* enemy, void* _engine) {
             rocket->position.y = enemy->position.y + (enemy->sprite->dimensions.y/2) - rocketSprite->tileDimensions.y/2;
 
             rocket->velocity.x = ENEMY_ROCKET_PROJECTILE_VELOCITY_X*1.25;
-            rocket->velocity.y = ENEMY_ROCKET_PROJECTILE_VELOCITY_Y; 
+
+            int posDelta =  rocket->position.y - self->player->position.y;
+            if (posDelta > 50) {
+                rocket->velocity.y = -0.1f; 
+            } else if (posDelta < -50) {
+                rocket->velocity.y = 0.1f; 
+            } else {
+                rocket->velocity.y = 0.0f; 
+            }
 
             rocket->damage = 25;
             self->projectiles[projIndex] = rocket;
@@ -734,7 +624,16 @@ void gameIcyFireProjectileFunction(enemy_t* enemy, void* _engine) {
             rocket->position.y = enemy->position.y + (enemy->sprite->dimensions.y/2) - rocketSprite->tileDimensions.y/2;
 
             rocket->velocity.x = ENEMY_ROCKET_PROJECTILE_VELOCITY_X*1.75;
-            rocket->velocity.y = ENEMY_ROCKET_PROJECTILE_VELOCITY_Y; 
+
+            int posDelta =  rocket->position.y - self->player->position.y;
+            if (posDelta > 50) {
+                rocket->velocity.y = -0.1f; 
+            } else if (posDelta < -50) {
+                rocket->velocity.y = 0.1f; 
+            } else {
+                rocket->velocity.y = 0.0f; 
+            }
+
 
             rocket->damage = 25;
             self->projectiles[projIndex] = rocket;
@@ -806,6 +705,7 @@ void gameSpawnEnemy(engine_t* self) {
 
                 enemy->velocity.x = -0.1;
                 enemy->velocity.y = 0.0f;
+
                 enemy->health = 100;
                 enemy->state = ENEMY_STATE_PATH;
                 enemy->fireProjectileFunction = projFunction;
@@ -1000,18 +900,15 @@ void gameRenderEnemies(engine_t* self) {
 
 void gameRenderTfx(engine_t* self) {
     for (int tIndex=0; tIndex < ENGINE_MAX_TFX; tIndex++) {
-
         text_t *nextTfx = self->tfx[tIndex];
         if (nextTfx == NULL) {
             continue;
         }
-
         SDL_Color black;
         black.r = 0;
         black.g = 0;
         black.b = 0;
         black.a = nextTfx->colour.a;
-
         // Stroke
         TTF_SetFontOutline(nextTfx->font, 4);
         SDL_Surface *surface = TTF_RenderText_Solid(nextTfx->font,nextTfx->text,black);
@@ -1021,13 +918,15 @@ void gameRenderTfx(engine_t* self) {
             error("Error: Could not create tfx texture\n");
             return;
         }
-        int iW, iH;
+        int iW, iH, cX, cY;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest;
         dest.x = nextTfx->position.x;
         dest.y = nextTfx->position.y;
         dest.w = iW;
         dest.h = iH;
+        cX = dest.x + (iW/2);
+        cY = dest.y + (iH/2);
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
@@ -1041,14 +940,13 @@ void gameRenderTfx(engine_t* self) {
             return;
         }
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
-        dest.x = nextTfx->position.x;
-        dest.y = nextTfx->position.y;
+        dest.x = cX - (iW/2);
+        dest.y = cY - (iH/2);
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
-
     }
 }
 
@@ -1134,13 +1032,15 @@ void gameRenderScore(engine_t* self, int i) {
             error("Error: Could not create score texture\n");
             return;
         }
-        int iW, iH;
+        int iW, iH, cX, cY;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest;
         dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*1) - (iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
+        cX = dest.x + (iW/2);
+        cY = dest.y + (iH/2);
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
@@ -1153,8 +1053,8 @@ void gameRenderScore(engine_t* self, int i) {
             return;
         }
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
-        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*1) - (iW/2);
-        dest.y = self->screenHeight-iH-5;
+        dest.x = cX - (iW/2);
+        dest.y = cY - (iH/2);
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
@@ -1170,8 +1070,8 @@ void gameRenderHealth(engine_t* self, int i) {
         black.g = 0;
         black.b = 0;
         black.a = 0;
-        TTF_SetFontOutline(self->healthText->font, 4);
         //Stroke 
+        TTF_SetFontOutline(self->healthText->font, 4);
         snprintf(self->healthText->text, self->healthText->bufferSize, "%.3d",self->player->health);
         SDL_Surface *surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, black);
         SDL_Texture *texture = SDL_CreateTextureFromSurface(self->renderer, surface);
@@ -1179,17 +1079,18 @@ void gameRenderHealth(engine_t* self, int i) {
             error("Error: Could not create coins text texture\n");
             return;
         }
-        int iW, iH;
+        int iW, iH, cX, cY;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest, *src;
         dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
+        cX = dest.x + (iW/2);
+        cY = dest.y + (iH/2);
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
-
         // Text
         TTF_SetFontOutline(self->healthText->font, 0);
         surface = TTF_RenderText_Solid(self->healthText->font, self->healthText->text, self->healthText->colour);
@@ -1199,14 +1100,13 @@ void gameRenderHealth(engine_t* self, int i) {
             return;
         }
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
-        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
-        dest.y = self->screenHeight-iH-5;
+        dest.x = cX - (iW/2);
+        dest.y = cY - (iH/2);
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
-
         // Sprite
         src = spriteGetCurrentFrameRect(self->healthSprite);
         dest.w = self->healthSprite->tileDimensions.x;
@@ -1233,13 +1133,15 @@ void gameRenderCoinCount(engine_t* self, int i) {
             error("Error: Could not create coins text texture\n");
             return;
         }
-        int iW, iH;
+        int iW, iH, cX, cY;
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
         SDL_Rect dest, *src;
         dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
         dest.y = self->screenHeight-iH-5;
         dest.w = iW;
         dest.h = iH;
+        cX = dest.x + (iW/2);
+        cY = dest.y + (iH/2);
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
         SDL_FreeSurface(surface);
         SDL_DestroyTexture(texture);
@@ -1253,8 +1155,8 @@ void gameRenderCoinCount(engine_t* self, int i) {
             return;
         }
         SDL_QueryTexture(texture, NULL, NULL, &iW, &iH);
-        dest.x = (self->screenWidth/(ENGINE_NUM_HUD_ELEMENTS+1)*i)-(iW/2);
-        dest.y = self->screenHeight-iH-5;
+        dest.x = cX - (iW/2);
+        dest.y = cY - (iH/2);
         dest.w = iW;
         dest.h = iH;
         SDL_RenderCopy(self->renderer, texture, NULL, &dest);
@@ -1596,7 +1498,7 @@ void gamePopupTextFloat(text_t* self, void *vEngine) {
 int gameInsertPopupText(engine_t* self, char* text, vector2i_t position) {
     for (int tIndex=0; tIndex<ENGINE_MAX_TFX; tIndex++) {
         if (self->tfx[tIndex] == NULL) {
-            text_t* tfx = textAllocate("res/fonts/retro.ttf",DEFAULT_FONT_SIZE,strlen(text)+1);
+            text_t* tfx = textAllocate("res/fonts/nineteen.ttf",DEFAULT_FONT_SIZE,strlen(text)+1);
             if (tfx != NULL) {
                 snprintf(tfx->text,tfx->bufferSize,"%s",text);
                 tfx->position = position;

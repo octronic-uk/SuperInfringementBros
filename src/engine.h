@@ -15,6 +15,28 @@
 #include "vfx.h"
 #include "collectable.h"
 
+typedef struct {
+    int up;
+    int down;
+    int left;
+    int right;
+    int start;
+    int btn1;
+    int btn2;
+    int btn3;
+    int btn4;
+    int btn5;
+    int btn6;
+    int btn7;
+    int btn8;
+} joy_config_t;
+
+typedef struct {
+    char name[4];
+    int  score;
+} highscore_t;
+
+
 typedef struct engine engine_t;
 
 struct engine {
@@ -39,7 +61,6 @@ struct engine {
 
     // Engine functions
     int (*setupFunction  )(engine_t*);
-    int (*inputFunction  )(engine_t*);
     int (*renderFunction )(engine_t*);
     int (*updateFunction )(engine_t*);
     int (*cleanupFunction)(engine_t*);
@@ -64,17 +85,32 @@ struct engine {
     sprite_t       *healthSprite;
     text_t         *healthText;
 
+    // High Score Screen
+    background_t *highScoreBackground;
+    text_t      **highScoreTextArray;
+    text_t       *highScorePromptText;
+    text_t       *highScoreTitle;    
+    highscore_t  *highScores;
+
     // Input
+    joy_config_t *joystickConf;
     char upPressed;
     char downPressed;
     char leftPressed;
     char rightPressed;
-    char pauseBtnPressed;
-    char fire1BtnPressed;
-    char fire2BtnPressed;
     char startPressed;
-    char buyBtnPressed;
-    char weaponBtnPressed;
+    char btn1Pressed;
+    char btn2Pressed;
+    char btn3Pressed;
+    char btn4Pressed;
+    char btn5Pressed;
+    char btn6Pressed;
+    char btn7Pressed;
+    char btn8Pressed;
+
+    // Save Data
+    FILE *configFile;
+    
 };
 
 engine_t* engineAllocate();
@@ -87,6 +123,8 @@ void engineSetState(engine_t*, char);
 void engineDestroy(engine_t* self);
 void engineDestroySDL(engine_t* self);
 void engineCloseSDL(engine_t* self);
+
+int engineInputHandler(engine_t* self);
 
 int  engineLoop(engine_t* self);
 

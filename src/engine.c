@@ -75,23 +75,34 @@ engine_t* engineAllocate() {
 
     // Setup Handlers
     engine->setupFunction   = NULL;
-    engine->inputFunction   = NULL;
     engine->updateFunction  = NULL;
     engine->renderFunction  = NULL;
     engine->cleanupFunction = NULL;
 
     // Event variables
-    engine->upPressed        = 0;
-    engine->downPressed      = 0;
-    engine->leftPressed      = 0;
-    engine->rightPressed     = 0;
-    engine->fire1BtnPressed  = 0;
-    engine->fire2BtnPressed  = 0;
-    engine->buyBtnPressed    = 0;
-    engine->weaponBtnPressed = 0;
-    engine->startPressed     = 0;
+    engine->upPressed    = 0;
+    engine->downPressed  = 0;
+    engine->leftPressed  = 0;
+    engine->rightPressed = 0;
+
+    engine->btn1Pressed = 0;
+    engine->btn2Pressed = 0;
+    engine->btn3Pressed = 0;
+    engine->btn4Pressed = 0;
+    engine->btn5Pressed = 0;
+    engine->btn6Pressed = 0;
+    engine->btn7Pressed = 0;
+    engine->btn8Pressed = 0;
+
+    engine->startPressed = 0;
 
     engine->state = ENGINE_STATE_NONE;
+
+    // High Score Variables
+    engine->highScoreTextArray  = (text_t**)malloc(sizeof(text_t*)*HIGH_SCORES_MAX);
+    engine->highScoreTitle      = NULL;
+    engine->highScoreBackground = NULL;
+    engine->highScores          = (highscore_t*)malloc(sizeof(highscore_t)*HIGH_SCORES_MAX);
 
     return engine;
 }
@@ -107,35 +118,30 @@ void engineSetState(engine_t* self, char state) {
         switch (state) {
             case ENGINE_STATE_TITLE:
                 self->setupFunction   = &titleSetupHandler;
-                self->inputFunction   = &titleInputHandler;
                 self->updateFunction  = &titleUpdateHandler;
                 self->renderFunction  = &titleRenderHandler;
                 self->cleanupFunction = &titleCleanupHandler;
                 break;
             case ENGINE_STATE_GAME:
                 self->setupFunction   = &gameSetupHandler;
-                self->inputFunction   = &gameInputHandler;
                 self->updateFunction  = &gameUpdateHandler;
                 self->renderFunction  = &gameRenderHandler;
                 self->cleanupFunction = &gameCleanupHandler;
                 break;
             case ENGINE_STATE_HIGHSCORE:
                 self->setupFunction   = &highScoreSetupHandler;
-                self->inputFunction   = &highScoreInputHandler;
                 self->updateFunction  = &highScoreUpdateHandler;
                 self->renderFunction  = &highScoreRenderHandler;
                 self->cleanupFunction = &highScoreCleanupHandler;
                 break;
             case ENGINE_STATE_MENU:
                 self->setupFunction   = &menuSetupHandler;
-                self->inputFunction   = &menuInputHandler;
                 self->updateFunction  = &menuUpdateHandler;
                 self->renderFunction  = &menuRenderHandler;
                 self->cleanupFunction = &menuCleanupHandler;
                 break;
             default:
                 self->setupFunction   = NULL;
-                self->inputFunction   = NULL;
                 self->updateFunction  = NULL;
                 self->renderFunction  = NULL;
                 self->cleanupFunction = NULL;
@@ -190,7 +196,7 @@ int engineInitSDL(engine_t* self) {
         return ENGINE_ERROR;
     }
 
-    self->window = SDL_CreateWindow(self->screenTitle, 0, 0, self->screenWidth, self->screenHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN);
+    self->window = SDL_CreateWindow(self->screenTitle, 0, 0, self->screenWidth, self->screenHeight, SDL_WINDOW_SHOWN || SDL_WINDOW_FULLSCREEN);
 
     if (self->window == NULL) {
         error("Engine: SDL_CreateWindow Error: %s\n",SDL_GetError());
@@ -221,8 +227,19 @@ int engineInitSDL(engine_t* self) {
 void engineDestroy(engine_t* self) {
     debug("Destroying engine_t\n");
     if (self != NULL) {
+        // Clean up active state
         if (self->cleanupFunction != NULL) {
             self->cleanupFunction(self);
+        }
+        // High Scores Array
+        if (self->highScores != NULL) {
+            free(self->highScores);
+            self->highScores = NULL;
+        }
+        // Joystic Config
+        if (self->joystickConf != NULL) {
+            free(self->joystickConf);
+            self->joystickConf = NULL;
         }
         engineDestroySDL(self);
         engineCloseSDL(self);
@@ -260,12 +277,7 @@ int engineLoop(engine_t* self) {
         self->currentTime = SDL_GetTicks();
         self->deltaTime = self->currentTime - self->lastTime;
 
-        if (self->inputFunction != NULL) {
-            int result = self->inputFunction(self);
-            if (result == ENGINE_QUIT) {
-                done = 1;
-            }
-        } else {
+        if (engineInputHandler(self) == ENGINE_QUIT) {
             done = 1;
         }
 
@@ -279,7 +291,9 @@ int engineLoop(engine_t* self) {
         }
 
         if (self->renderFunction != NULL) {
+            SDL_RenderClear(self->renderer);
             int result = self->renderFunction(self);
+            SDL_RenderPresent(self->renderer);
             if (result == ENGINE_QUIT) {
                 done = 1;
             }
@@ -352,5 +366,155 @@ projectile_t** engineGetProjectileOnEnemyCollisions(engine_t* engine, enemy_t* e
         }
     }
     return retval;
+}
+
+int engineInputHandler(engine_t* self) {
+    while(SDL_PollEvent(self->event)) {
+        if (self->event->type == SDL_QUIT) {
+            return ENGINE_QUIT;
+        } else if (self->event->type == SDL_KEYDOWN) {
+            switch (self->event->key.keysym.sym) {
+                case SDLK_UP:
+                    self->upPressed = 1;
+                    break;
+                case SDLK_DOWN:
+                    self->downPressed = 1;
+                    break;
+                case SDLK_LEFT:
+                    self->leftPressed = 1;
+                    break;
+                case SDLK_RIGHT:
+                    self->rightPressed = 1;
+                    break;
+                case SDLK_a:
+                    self->btn1Pressed = 1;
+                    break;
+                case SDLK_s:
+                    self->btn2Pressed = 1;
+                    break;
+                case SDLK_d:
+                    self->btn3Pressed = 1;
+                    break;
+                case SDLK_f:
+                    self->btn4Pressed = 1;
+                    break;
+                case SDLK_RETURN:
+                    self->startPressed = 1;
+                    break;
+            }
+        } else if (self->event->type == SDL_KEYUP) {
+            // KeyUp
+            switch (self->event->key.keysym.sym) {
+                case SDLK_UP:
+                    self->upPressed = 0;
+                    break;
+                case SDLK_DOWN:
+                    self->downPressed = 0;
+                    break;
+                case SDLK_LEFT:
+                    self->leftPressed = 0;
+                    break;
+                case SDLK_RIGHT:
+                    self->rightPressed = 0;
+                    break;
+                case SDLK_a:
+                    self->btn1Pressed = 0;
+                    break;
+                case SDLK_s:
+                    self->btn2Pressed = 0;
+                    break;
+                case SDLK_d:
+                    self->btn3Pressed = 0;
+                    break;
+                case SDLK_f:
+                    self->btn4Pressed = 0;
+                    break;
+                case SDLK_RETURN:
+                    self->startPressed = 0;
+                    break;
+            }
+        }  else if (self->event->type == SDL_JOYAXISMOTION) {
+            // X
+            if (self->event->jaxis.axis == 0) {
+                if (self->event->jaxis.value < -8000) {
+                    self->leftPressed = 1;
+                    self->rightPressed = 0;
+
+                } else if (self->event->jaxis.value > 8000) {
+                    self->leftPressed = 0;
+                    self->rightPressed = 1;
+
+                } else {
+                    self->leftPressed = 0;
+                    self->rightPressed = 0;
+                }
+            }
+            // Y
+            else if (self->event->jaxis.axis == 1) {
+                if (self->event->jaxis.value < -8000) {
+                    self->upPressed = 1;
+                    self->downPressed = 0;
+
+                } else if (self->event->jaxis.value > 8000) {
+                    self->upPressed = 0;
+                    self->downPressed = 1;
+
+                } else {
+                    self->upPressed = 0;
+                    self->downPressed = 0;
+                }
+            }
+        } else if (self->event->type == SDL_JOYHATMOTION) {
+            switch (self->event->jhat.value) {
+                case SDL_HAT_UP:
+                    self->upPressed   = 1;
+                    self->downPressed = 0;
+                    break;
+                case SDL_HAT_DOWN:
+                    self->upPressed   = 0;
+                    self->downPressed = 1;
+                    break;
+                case SDL_HAT_LEFT:
+                    self->leftPressed  = 1;
+                    self->rightPressed = 0;
+                    break;
+                case SDL_HAT_RIGHT:
+                    self->leftPressed  = 0;
+                    self->rightPressed = 1;
+                    break;
+                case SDL_HAT_CENTERED:
+                    self->upPressed    = 0;
+                    self->downPressed  = 0;
+                    self->leftPressed  = 0;
+                    self->rightPressed = 0;
+                    break;
+            }
+        } else if (self->event->type == SDL_JOYBUTTONDOWN) {
+            switch(self->event->jbutton.button) {
+                case 0:
+                    self->btn1Pressed = 1;
+                    break;
+                case 1:
+                    self->btn2Pressed = 1;
+                    break;
+                case 8:
+                    self->startPressed = 1;
+                    break;
+            }
+        } else if (self->event->type == SDL_JOYBUTTONUP) {
+            switch(self->event->jbutton.button) {
+                case 0:
+                    self->btn1Pressed = 0;
+                    break;
+                case 1:
+                    self->btn2Pressed = 0;
+                    break;
+                case 8:
+                    self->startPressed = 0;
+                    break;
+            }
+        }
+    }
+    return ENGINE_OK;
 }
 

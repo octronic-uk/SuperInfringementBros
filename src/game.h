@@ -6,7 +6,6 @@
 
 // Handler Functions
 int gameSetupHandler  (engine_t* self);
-int gameInputHandler  (engine_t* self);
 int gameUpdateHandler (engine_t* self);
 int gameRenderHandler (engine_t* self);
 int gameCleanupHandler(engine_t* self);
@@ -18,6 +17,7 @@ sprite_t* gameCreateEnemyRocketSprite(engine_t* engine);
 sprite_t* gameCreateCoinSprite(engine_t* engine);
 sprite_t* gameCreateExplosionSprite(engine_t* engine);
 sprite_t* gameCreateRGBYSprite(engine_t* self);
+sprite_t* gameCreateYinYangSprite(engine_t* self);
 sprite_t* gameCreateLemonSprite(engine_t* self);
 
 // Insert Asset Functions

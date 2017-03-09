@@ -71,4 +71,8 @@
 
 #define DEFAULT_FONT_SIZE 28
 
+#define HIGH_SCORES_MAX 10
+#define HIGH_SCORE_FILE "highscores"
+#define ENGINE_CONFIG_FILE "config"
+
 #endif // CONSTANTS_H
